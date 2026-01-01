@@ -3,88 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Графік Світла</title>
+    <title>Графік Світла - Миколаївка</title>
     <link rel="apple-touch-icon" sizes="180x180" href="ico/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="ico/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="ico/favicon-16x16.png">
     <link rel="manifest" href="site.webmanifest">
     <meta name="theme-color" content="#f0f2f5">
-    <style>
-        :root { --main: #1a1a1b; --line: #e0e0e0; --active: #000000; --bg-color: #f0f2f5; --accent-color: #2d3748; }
-        body { font-family: sans-serif; color: var(--main); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; background: var(--bg-color); }
-        .container { width: 100%; max-width: 400px; text-align: center; }
-        
-        
-        
-        /* Анімація пульсу */
-        .logo-container { margin: 10px 0 10px 0; display: flex; justify-content: center; width: 100%; }
-        .logo-container svg { width: 280px; height: 80px; }
-        :is(#back2089, #front2089) { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; } 
-        #back2089 { stroke: #cccccc; opacity: 0.3; } 
-        #front2089 { stroke: var(--active); stroke-dasharray: 260; stroke-dashoffset: 0; animation: dash_6821 1.4s linear infinite; } 
-        .pulse-text { font-family: 'Brush Script MT', cursive, sans-serif; font-size: 14px; font-weight: bold; letter-spacing: 1px; fill: var(--active); text-transform: uppercase; }
-        @keyframes dash_6821 { 0% { stroke-dashoffset: 520; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: .5; } }
-        
-        h2 { font-size: 1.3rem; font-weight: 600; margin: 0; color: var(--main); }
-        .update-status { font-size: 0.85rem; color: #666; margin: 5px 0 25px 0; font-weight: 500; }
-        
-        h1 { font-weight: 400; font-size: 1.4rem; margin-bottom: 25px; }
-        .queue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
-        .btn-q { background: #fff; border: 2px solid var(--main); padding: 18px; border-radius: 10px; cursor: pointer; font-size: 1.2rem; color: var(--main); font-weight: 700; }
-        
-        .tabs, .time-options { display: flex; border-bottom: 2px solid var(--line); margin-bottom: 20px; width: 100%; }
-        .tab, .time-btn { flex: 1; padding: 15px; cursor: pointer; opacity: 0.4; border-bottom: 3px solid transparent; font-size: 1.1rem; background: none; border: none; color: var(--main); outline: none; }
-        .tab.active, .time-btn.active { opacity: 1; border-bottom: 3px solid var(--main); font-weight: 700; }
-        
-        .slot { display: flex; justify-content: space-between; padding: 18px 5px; border-bottom: 1px solid var(--line); width: 100%; align-items: center; }
-        .slot.current { background: #f0f7ff; border-radius: 8px; border-bottom-color: transparent; }
-        .time-box { display: flex; align-items: center; gap: 10px; }
-        .time { font-size: 1.2rem; font-weight: 500; }
-        .slot.current .time { color: var(--active); font-weight: 700; }
-        
-        .slot-right { display: flex; align-items: center; gap: 12px; }
-        .dur { font-size: 1rem; color: #555; background: #f0f0f0; padding: 4px 8px; border-radius: 6px; font-weight: 500; }
-        
-        .calendar-btn { cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px; transition: 0.2s; }
-        .calendar-btn:hover { background: #e8e8e8; }
-        .calendar-btn svg { width: 24px; height: 24px; fill: var(--main); }
-        
-        .calendar-btn.past { opacity: 0.15; pointer-events: none; cursor: default; filter: grayscale(1); }
-        .slot.past .time, .slot.past .dur { opacity: 0.5; }
-
-        .reminder-section { margin-top: 30px; }
-        .reminder-title { font-size: 1rem; font-weight: 600; margin-bottom: 5px; color: var(--main); text-align: left; padding-left: 5px; }
-        
-        .footer { margin-top: 50px; font-size: 0.85rem; color: #333; font-weight: 500; }
-        .hidden { display: none !important; }
-        .btn-change { width: 100%; margin-top: 15px; background: var(--main); color: #fff; border: none; padding: 15px; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 600; box-shadow: 0 0 25px rgba(0, 0, 0, 0.3); }
-        .loader-clock { width: 20px; height: 20px; stroke: var(--active); }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 5px #000; }
-            50% { box-shadow: 0 0 15px #000; }
-        }
-
-        .calendar-btn:not(.past) {
-            animation: pulse 1.5s infinite;
-        }
-
-        .wiki-section { width: 100%; margin-top: 40px; color: var(--accent-color); }
-        .wiki-divider { height: 1px; background: var(--accent-color); margin-bottom: 30px; }
-        .wiki-title { font-size: 1.1rem; font-weight: 900; text-transform: uppercase; text-align: center; margin-bottom: 20px; letter-spacing: 1px; }
-        .wiki-content {
-            background: #fff;
-            padding: 25px;
-            border-radius: 18px;
-            border: 2px solid var(--accent-color);
-            font-size: 15px;
-            line-height: 1.6;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
-        }
-        .wiki-content p { margin-bottom: 15px; }
-        .wiki-content h4 { margin: 20px 0 10px; text-transform: uppercase; font-weight: 900; }
-        .wiki-content strong { color: #e53e3e; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -98,33 +23,30 @@
     </div>
     <h2>Графік відключень</h2>
     <div class="update-status" id="status">Завантаження...</div>
+
     <h1 id="title">Оберіть чергу</h1>
     <div id="grid" class="queue-grid"></div>
+
     <div id="box" class="hidden">
         <div class="tabs">
-            <div id="tabL" class="tab active" onclick="setTab(0)">...</div>
-            <div id="tabR" class="tab" onclick="setTab(1)">...</div>
+            <div id="tabL" class="tab active" onclick="setTab(0)">Сьогодні</div>
+            <div id="tabR" class="tab" onclick="setTab(1)">Завтра</div>
         </div>
         <div id="content"></div>
-        
-
-
         <button class="btn-change" onclick="resetView()">Змінити чергу</button>
 
-        <div class="wiki-section">
-            <div class="wiki-divider"></div>
-            <div class="wiki-title">Довідка</div>
-            <div class="wiki-content">
-                <h4>Календар</h4>
-                <p><strong>Іконка календаря:</strong> Після натискання на іконку буде створено подію у вашому Google Календарі з автоматично заповненою назвою та часом відключення. Час нагадування буде встановлено згідно з вашими стандартними налаштуваннями календаря, і ви можете змінити його вручну.</p>
-
-                <p><strong>Важливо:</strong> Даний графік не є офіційним джерелом інформації. Дані взяті з відкритих джерел і можуть бути неточними.</p>
-            </div>
+        <div class="separator"></div>
+        
+        <div class="wiki-box">
+            <p><b>Довідка</b></p>
+            <p><b>Іконка календаря:</b> Після натискання на іконку буде створено подію у вашому Google Календарі з автоматично заповненою назвою та часом відключення. Час нагадування перед подією буде встановлено згідно з вашими стандартними налаштуваннями календаря, і ви можете змінити його вручну.</p>
+            <p><b>Важливо:</b> Даний графік не є офіційним джерелом інформації. Дані взяті з відкритих джерел і можуть бути неточними.</p>
         </div>
     </div>
-    <footer>
-        <p>&copy; <span id="copyright-year"></span> Mykhailo Anisimov</p>
-    </footer>
+
+    <div class="footer">
+        &copy; <span id="year"></span> Mykhailo Anisimov
+    </div>
 </div>
 
 <script src="script.js" defer></script>

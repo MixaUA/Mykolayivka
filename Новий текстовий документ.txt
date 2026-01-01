@@ -5,13 +5,12 @@ https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_ne
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Графік Світла</title>
+    <title>Графік Світла - Миколаївка</title>
     <style>
         :root { --main: #1a1a1b; --line: #e0e0e0; --active: #000000; }
         body { font-family: sans-serif; color: var(--main); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 400px; text-align: center; }
         
-        /* Анімація пульсу */
         .logo-container { margin: 10px 0 10px 0; display: flex; justify-content: center; width: 100%; }
         .logo-container svg { width: 280px; height: 80px; }
         :is(#back2089, #front2089) { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; } 
@@ -39,14 +38,29 @@ https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_ne
         
         .slot-right { display: flex; align-items: center; gap: 12px; }
         .dur { font-size: 1rem; color: #555; background: #f0f0f0; padding: 4px 8px; border-radius: 6px; font-weight: 500; }
-        .calendar-btn { cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px; }
-        .calendar-btn svg { width: 24px; height: 24px; fill: var(--main); }
+        .calendar-btn { cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px; transition: all 0.3s ease; }
+        .calendar-btn:not(.past) { animation: pulse-shadow 2s ease-in-out infinite; }
+        .calendar-btn:not(.past):hover { transform: scale(1.1); background: rgba(0, 0, 0, 0.08); }
+        .calendar-btn svg { width: 24px; height: 24px; fill: var(--main); transition: fill 0.3s; }
         .calendar-btn.past { opacity: 0.15; pointer-events: none; }
+        
+        @keyframes pulse-shadow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+            50% { box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.25); }
+        }
         .slot.past .time, .slot.past .dur { opacity: 0.5; }
 
         .btn-change { width: 100%; margin-top: 30px; background: var(--main); color: #fff; border: none; padding: 15px; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 600; }
         .loader-clock { width: 20px; height: 20px; stroke: var(--active); }
+        .no-actual { margin-top: 40px; opacity: 0.5; font-style: italic; font-size: 1.1rem; }
         .hidden { display: none !important; }
+
+        .separator { width: 100%; height: 1px; background: var(--line); margin: 30px 0; }
+        .wiki-box { text-align: left; font-size: 0.85rem; color: #666; line-height: 1.5; padding: 0 10px; }
+        .wiki-box b { color: var(--main); }
+        
+        /* Колір копірайту змінено на чорний */
+        .footer { margin-top: 50px; font-size: 0.75rem; color: var(--main); padding-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -56,47 +70,59 @@ https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_ne
         <svg viewBox="0 0 240 64">
             <polyline points="0,45 38,45 44,33 50,45 57,45 62,55 71,9 80,63 84,45 97,45 103,40 110,45 130,45" id="back2089"/>
             <polyline points="0,45 38,45 44,33 50,45 57,45 62,55 71,9 80,63 84,45 97,45 103,40 110,45 130,45" id="front2089"/>
-            <text x="135" y="49" class="pulse-text">Миколаївка пульсує</text>
+            <text x="135" y="49" class="pulse-text">Миколаївка</text>
         </svg>
     </div>
     <h2>Графік відключень</h2>
     <div class="update-status" id="status">Завантаження...</div>
 
     <h1 id="title">Оберіть чергу</h1>
-    
     <div id="grid" class="queue-grid"></div>
 
     <div id="box" class="hidden">
         <div class="tabs">
-            <div id="tabL" class="tab active" onclick="setTab(0)">...</div>
-            <div id="tabR" class="tab" onclick="setTab(1)">...</div>
+            <div id="tabL" class="tab active" onclick="setTab(0)">Сьогодні</div>
+            <div id="tabR" class="tab" onclick="setTab(1)">Завтра</div>
         </div>
         <div id="content"></div>
         <button class="btn-change" onclick="resetView()">Змінити чергу</button>
+
+        <div class="separator"></div>
+        
+        <div class="wiki-box">
+            <p><b>Довідка</b></p>
+            <p><b>Іконка календаря:</b> Після натискання на іконку буде створено подію у вашому Google Календарі з автоматично заповненою назвою та часом відключення. Час нагадування перед подією буде встановлено згідно з вашими стандартними налаштуваннями календаря, і ви можете змінити його вручну.</p>
+            <p><b>Важливо:</b> Даний графік не є офіційним джерелом інформації. Дані взяті з відкритих джерел і можуть бути неточними.</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        &copy; <span id="year"></span> Mykhailo Anisimov
     </div>
 </div>
 
 <script>
     const API_URL = "https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_new.json";
     const MINUTES_IN_DAY = 1440;
-    const UPDATE_INTERVAL = 60000;
-    const MONTHS = {"січня":0,"лютого":1,"березня":2,"квітня":3,"травня":4,"червня":5,"липня":6,"серпня":7,"вересня":8,"жовтня":9,"листопада":10,"грудня":11};
+    const DAY_NAMES = ["one", "two", "three", "four", "five", "six", "seven"];
     
-    let db = null, curQ = null, currentIdx = 0, currentDiffDays = 0;
+    let db = null, curQ = null, currentIdx = 0, todayPrefix = null, tomorrowPrefix = null;
 
     const clockSVG = `<svg class="loader-clock" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite"/></path></svg>`;
     const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>`;
 
     async function init() {
+        document.getElementById('year').innerText = new Date().getFullYear();
+
         curQ = localStorage.getItem('selectedQueue');
         try {
             const r = await fetch(`${API_URL}?t=${Date.now()}`);
             db = await r.json();
-            // Тут виправлено вивід: прибрано слово "Графік"
             document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
+            
             renderGrid();
             if (curQ) selectQ(curQ);
-            setInterval(() => { if (db && curQ) render(); }, UPDATE_INTERVAL);
+            setInterval(() => { if (db && curQ) render(); }, 60000);
         } catch (e) { document.getElementById('status').innerText = "Помилка завантаження"; }
     }
 
@@ -112,11 +138,97 @@ https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_ne
         document.getElementById('grid').classList.add('hidden');
         document.getElementById('box').classList.remove('hidden');
         document.getElementById('title').innerText = `Черга ${q}`;
+        determineCycleDays();
         render();
     }
 
     function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
     function setTab(i) { currentIdx = i; render(); }
+
+    function checkLastSlotPast(prefix, qData) {
+        const now = new Date();
+        const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        const slots = Object.keys(qData)
+            .filter(k => k.startsWith(prefix + '_'))
+            .map(k => qData[k])
+            .filter(v => v && v.includes(':') && !v.includes('інформації'));
+        
+        if (slots.length === 0) return true;
+        
+        let lastSlot = null;
+        let latestEndTime = -1;
+        
+        slots.forEach(s => {
+            const [sT, eT] = s.split('-');
+            const [eH, eM] = eT.split(':').map(Number);
+            const endMinutes = eH * 60 + eM;
+            
+            if (endMinutes > latestEndTime) {
+                latestEndTime = endMinutes;
+                lastSlot = s;
+            }
+        });
+        
+        if (!lastSlot) return true;
+        
+        const [sT, eT] = lastSlot.split('-');
+        const sEnd = new Date(todayZero);
+        const [eH, eM] = eT.split(':').map(Number);
+        sEnd.setHours(eH, eM, 0, 0);
+        
+        const sStart = new Date(todayZero);
+        const [sH, sM] = sT.split(':').map(Number);
+        sStart.setHours(sH, sM, 0, 0);
+        
+        if (sEnd <= sStart) sEnd.setDate(sEnd.getDate() + 1);
+        
+        return now.getTime() >= sEnd.getTime();
+    }
+
+    function determineCycleDays() {
+        if (!db || !curQ) return;
+        const qData = db[`${curQ}_cherg`];
+        const prefixesWithData = [];
+        for (let dayName of DAY_NAMES) {
+            const keys = Object.keys(qData).filter(k => k.startsWith(dayName + '_'));
+            if (keys.length > 0 && keys.some(k => qData[k] && qData[k].includes(':') && !qData[k].includes('інформації'))) {
+                prefixesWithData.push(dayName);
+            }
+        }
+        
+        if (prefixesWithData.length === 0) {
+            todayPrefix = null; tomorrowPrefix = null; return;
+        }
+        
+        if (prefixesWithData.length === 1) {
+            if (checkLastSlotPast(prefixesWithData[0], qData)) {
+                todayPrefix = null; tomorrowPrefix = null;
+            } else {
+                todayPrefix = prefixesWithData[0]; tomorrowPrefix = null;
+            }
+            return;
+        }
+        
+        prefixesWithData.sort((a, b) => DAY_NAMES.indexOf(a) - DAY_NAMES.indexOf(b));
+        
+        const isTransitionPair = prefixesWithData.includes('seven') && 
+                                 prefixesWithData.includes('one') && 
+                                 prefixesWithData.length === 2;
+        
+        let smallerPrefix, largerPrefix;
+        if (isTransitionPair) {
+            smallerPrefix = 'seven'; largerPrefix = 'one';
+        } else {
+            smallerPrefix = prefixesWithData[0]; largerPrefix = prefixesWithData[1];
+        }
+        
+        if (checkLastSlotPast(smallerPrefix, qData)) {
+            todayPrefix = largerPrefix; tomorrowPrefix = null;
+        } else {
+            todayPrefix = smallerPrefix; tomorrowPrefix = largerPrefix;
+        }
+    }
 
     function getH(t) {
         const [s, e] = t.split('-').map(v => { const [h, m] = v.split(':').map(Number); return h * 60 + m; });
@@ -124,11 +236,10 @@ https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_ne
         return (d/60 % 1 === 0 ? d/60 : (d/60).toFixed(1)) + "г";
     }
 
-    function addToCalendar(slotTime) {
+    function addToCalendar(slotTime, isToday) {
         const [startTime, endTime] = slotTime.split('-');
         const eventDate = new Date();
-        const targetDayOffset = (currentIdx === 0) ? -currentDiffDays : (1 - currentDiffDays);
-        eventDate.setDate(eventDate.getDate() + targetDayOffset);
+        if (!isToday) eventDate.setDate(eventDate.getDate() + 1);
         
         const formatG = (timeStr, isEnd = false) => {
             const [h, m] = timeStr.split(':');
@@ -137,56 +248,82 @@ https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_ne
             if (isEnd && timeStr < startTime) d.setDate(d.getDate() + 1);
             return d.toISOString().replace(/-|:|\.\d\d\d/g, "");
         };
-        
         const start = formatG(startTime), end = formatG(endTime, true);
-        const title = encodeURIComponent(`💡 СВІТЛО: ${startTime} ➔ ${endTime}`);
-        const details = encodeURIComponent(`Черга: ${curQ}\nГрафік: Сумиобленерго\n⚠️ Перевірте час нагадування перед збереженням!`);
-        window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}`, '_blank');
+        const eventTitle = `Черга ${curQ} ⚡ Відключення світла з ${startTime} по ${endTime}`;
+        window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${start}/${end}&details=${encodeURIComponent('Миколаївка, графік відключень')}&sf=true&output=xml`, '_blank');
     }
 
     function render() {
         if (!db || !curQ) return;
-        const cont = document.getElementById('content'), qData = db[`${curQ}_cherg`];
-        const p = db.update_time.split(' '), fileDate = new Date(new Date().getFullYear(), MONTHS[p[1].toLowerCase()], parseInt(p[0]));
-        const now = new Date(), todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        currentDiffDays = Math.round((todayZero - fileDate) / (1000 * 60 * 60 * 24));
-
-        document.getElementById('tabL').innerText = (currentDiffDays === 0) ? "Сьогодні" : "Вчора";
-        document.getElementById('tabR').innerText = (currentDiffDays === 0) ? "Завтра" : "Сьогодні";
+        const cont = document.getElementById('content');
+        const qData = db[`${curQ}_cherg`];
+        const targetPrefix = (currentIdx === 0) ? todayPrefix : tomorrowPrefix;
+        
         document.getElementById('tabL').classList.toggle('active', currentIdx === 0);
         document.getElementById('tabR').classList.toggle('active', currentIdx === 1);
+        
+        if (!targetPrefix) {
+            cont.innerHTML = `<div class="no-actual">Графік відсутній</div>`;
+            return;
+        }
+        
+        const slots = Object.keys(qData)
+            .filter(k => k.startsWith(targetPrefix + '_'))
+            .map(k => qData[k])
+            .filter(v => v && v.includes(':') && !v.includes('інформації'));
+        
+        if (slots.length === 0) {
+            cont.innerHTML = `<p style='margin-top:30px; opacity:0.3'>Графік відсутній</p>`;
+            return;
+        }
+        
+        const now = new Date();
+        const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const isToday = (currentIdx === 0);
+        const targetDate = new Date(todayZero);
+        if (!isToday) targetDate.setDate(targetDate.getDate() + 1);
+        
+        const nowMs = now.getTime();
+        const oneHourMs = 60 * 60 * 1000;
+        let foundActive = false;
+        let anyFuture = false;
 
-        const allKeys = Object.keys(qData).filter(k => qData[k].includes(':'));
-        const prefs = [...new Set(allKeys.map(k => k.split('_')[0]))];
-        const targetPref = (currentIdx === 0) ? prefs[0] : prefs[1];
-        const slots = targetPref ? Object.keys(qData).filter(k => k.startsWith(targetPref) && qData[k].includes(':')).map(k => qData[k]) : [];
-        const nowMs = now.getTime(); let foundActive = false;
+        const html = slots.map(s => {
+            const [sT, eT] = s.split('-');
+            const sStart = new Date(targetDate);
+            const [sH, sM] = sT.split(':').map(Number);
+            sStart.setHours(sH, sM, 0, 0);
+            
+            const sEnd = new Date(targetDate);
+            const [eH, eM] = eT.split(':').map(Number);
+            sEnd.setHours(eH, eM, 0, 0);
+            if (sEnd <= sStart) sEnd.setDate(sEnd.getDate() + 1);
 
-        cont.innerHTML = slots.length ? slots.map(s => {
-            const [sT_str, eT_str] = s.split('-');
-            const slotStart = new Date(todayZero), [sH, sM] = sT_str.split(':').map(Number);
-            slotStart.setHours(sH, sM, 0, 0);
-            const slotEnd = new Date(todayZero), [eH, eM] = eT_str.split(':').map(Number);
-            slotEnd.setHours(eH, eM, 0, 0);
-            const dayOffset = (currentIdx === 0) ? -currentDiffDays : (1 - currentDiffDays);
-            slotStart.setDate(slotStart.getDate() + dayOffset); slotEnd.setDate(slotEnd.getDate() + dayOffset);
-            if (slotEnd <= slotStart) slotEnd.setDate(slotEnd.getDate() + 1);
+            const isPast = nowMs >= sEnd.getTime();
+            const isCurrent = isToday && nowMs >= sStart.getTime() && nowMs < sEnd.getTime() && !foundActive;
+            if (isCurrent) foundActive = true;
+            if (!isPast) anyFuture = true;
+            
+            const canAddToCalendar = !isPast && !isCurrent && (!isToday || (sStart.getTime() - nowMs) > oneHourMs);
 
-            const isPast = nowMs >= slotStart.getTime();
-            const isTarget = nowMs >= slotStart.getTime() && nowMs < slotEnd.getTime() && !foundActive;
-            if (isTarget) foundActive = true;
-
-            return `<div class="slot ${isTarget ? 'current' : ''} ${isPast ? 'past' : ''}">
-                <div class="time-box"><span class="time">${s}</span>${isTarget ? clockSVG : ''}</div>
+            return `<div class="slot ${isCurrent ? 'current' : ''} ${isPast ? 'past' : ''}">
+                <div class="time-box"><span class="time">${s}</span>${isCurrent ? clockSVG : ''}</div>
                 <div class="slot-right">
                     <span class="dur">${getH(s)}</span>
-                    <div class="calendar-btn ${isPast ? 'past' : ''}" onclick="${isPast ? '' : `addToCalendar('${s}')`}" title="${isPast ? 'Минуло' : 'В календар'}">
+                    <div class="calendar-btn ${!canAddToCalendar ? 'past' : ''}" onclick="${!canAddToCalendar ? '' : `addToCalendar('${s}', ${isToday})`}">
                         ${calendarSVG}
                     </div>
                 </div>
             </div>`;
-        }).join('') : "<p style='margin-top:30px; opacity:0.3'>Графік відсутній</p>";
+        }).join('');
+
+        if (isToday && !anyFuture && slots.length > 0) {
+            cont.innerHTML = `<div class="no-actual">Графік більше не актуальний</div>`;
+        } else {
+            cont.innerHTML = html;
+        }
     }
+    
     init();
 </script>
 </body>

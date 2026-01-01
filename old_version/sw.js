@@ -2,8 +2,8 @@ const CACHE_NAME = 'mykolaivka-schedule-cache-v1';
 const urlsToCache = [
   './', // Cache the index.html
   './index.html',
-  './style.css',
   './script.js',
+  './img/mykolaivka.png',
   './ico/android-chrome-192x192.png',
   './ico/android-chrome-512x512.png',
   './ico/apple-touch-icon.png',
