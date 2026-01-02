@@ -1,6 +1,16 @@
 const API_URL = "https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_new.json";
 const MINUTES_IN_DAY = 1440;
 const DAY_NAMES = ["one", "two", "three", "four", "five", "six", "seven"];
+// Початкова прив'язка префіксів до днів тижня (можна змінити автоматично при збої)
+let WEEK_TO_PREFIX = {
+    4: "one",    // четвер
+    5: "two",    // п'ятниця
+    6: "three",  // субота
+    0: "four",   // неділя
+    1: "five",   // понеділок
+    2: "six",    // вівторок
+    3: "seven"   // середа
+};
 
 let db = null, curQ = null, currentIdx = 0, todayPrefix = null, tomorrowPrefix = null;
 
@@ -10,16 +20,66 @@ const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
 
+    // Завантажуємо збережену прив'язку (якщо була перепризначення)
+    const savedMapping = localStorage.getItem('weekToPrefixMapping');
+    if (savedMapping) {
+        try {
+            WEEK_TO_PREFIX = JSON.parse(savedMapping);
+            console.log('📥 Завантажено збережену прив\'язку:', WEEK_TO_PREFIX);
+        } catch (e) {
+            console.error('Помилка завантаження прив\'язки:', e);
+        }
+    }
+
     curQ = localStorage.getItem('selectedQueue');
     try {
         const r = await fetch(`${API_URL}?t=${Date.now()}`);
         db = await r.json();
-        document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
+
+        // ПЕРЕВІРКА НА АКТУАЛЬНІСТЬ (якщо файл старіший за 48 годин)
+        if (!isDataFresh(db.update_time)) {
+            document.getElementById('status').innerText = `Дані застаріли: ${db.update_time}`;
+            db = null; // Обнуляємо дані, щоб спрацював вивід "Графік відсутній"
+        } else {
+            document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
+        }
         
         renderGrid();
         if (curQ) selectQ(curQ);
         setInterval(() => { if (db && curQ) render(); }, 60000);
     } catch (e) { document.getElementById('status').innerText = "Помилка завантаження"; }
+}
+
+// Нова функція перевірки свіжості файлу
+function isDataFresh(updateTimeStr) {
+    if (!updateTimeStr) return false;
+    
+    const months = {
+        "січня": 0, "лютого": 1, "березня": 2, "квітня": 3, "травня": 4, "червня": 5,
+        "липня": 6, "серпня": 7, "вересня": 8, "жовтня": 9, "листопада": 10, "грудня": 11
+    };
+    
+    try {
+        const parts = updateTimeStr.split(' '); // ["1", "січня", "о", "21:33"]
+        const day = parseInt(parts[0]);
+        const month = months[parts[1]];
+        const timeParts = parts[3].split(':');
+        
+        const updateDate = new Date();
+        updateDate.setMonth(month);
+        updateDate.setDate(day);
+        updateDate.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), 0, 0);
+        
+        // Коригування року для межі грудня/січня
+        if (new Date().getMonth() === 0 && month === 11) {
+            updateDate.setFullYear(new Date().getFullYear() - 1);
+        }
+
+        const diffHours = (new Date() - updateDate) / (1000 * 60 * 60);
+        return diffHours < 48; // Повертає true, якщо дані свіжі (менше 48 годин)
+    } catch (e) {
+        return true; // Якщо формат дати в базі зламається, пропускаємо перевірку
+    }
 }
 
 function renderGrid() {
@@ -41,50 +101,15 @@ function selectQ(q) {
 function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
 function setTab(i) { currentIdx = i; render(); }
 
-function checkLastSlotPast(prefix, qData) {
-    const now = new Date();
-    const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    const slots = Object.keys(qData)
-        .filter(k => k.startsWith(prefix + '_'))
-        .map(k => qData[k])
-        .filter(v => v && v.includes(':') && !v.includes('інформації'));
-    
-    if (slots.length === 0) return true;
-    
-    let lastSlot = null;
-    let latestEndTime = -1;
-    
-    slots.forEach(s => {
-        const [sT, eT] = s.split('-');
-        const [eH, eM] = eT.split(':').map(Number);
-        const endMinutes = eH * 60 + eM;
-        
-        if (endMinutes > latestEndTime) {
-            latestEndTime = endMinutes;
-            lastSlot = s;
-        }
-    });
-    
-    if (!lastSlot) return true;
-    
-    const [sT, eT] = lastSlot.split('-');
-    const sEnd = new Date(todayZero);
-    const [eH, eM] = eT.split(':').map(Number);
-    sEnd.setHours(eH, eM, 0, 0);
-    
-    const sStart = new Date(todayZero);
-    const [sH, sM] = sT.split(':').map(Number);
-    sStart.setHours(sH, sM, 0, 0);
-    
-    if (sEnd <= sStart) sEnd.setDate(sEnd.getDate() + 1);
-    
-    return now.getTime() >= sEnd.getTime();
-}
-
 function determineCycleDays() {
     if (!db || !curQ) return;
+    
     const qData = db[`${curQ}_cherg`];
+    const now = new Date();
+    const todayDayOfWeek = now.getDay(); // 0=неділя, 1=понеділок, ..., 6=субота
+    const tomorrowDayOfWeek = (todayDayOfWeek + 1) % 7;
+    
+    // Знаходимо всі префікси з реальними даними в базі
     const prefixesWithData = [];
     for (let dayName of DAY_NAMES) {
         const keys = Object.keys(qData).filter(k => k.startsWith(dayName + '_'));
@@ -94,36 +119,50 @@ function determineCycleDays() {
     }
     
     if (prefixesWithData.length === 0) {
-        todayPrefix = null; tomorrowPrefix = null; return;
-    }
-    
-    if (prefixesWithData.length === 1) {
-        if (checkLastSlotPast(prefixesWithData[0], qData)) {
-            todayPrefix = null; tomorrowPrefix = null;
-        } else {
-            todayPrefix = prefixesWithData[0]; tomorrowPrefix = null;
-        }
+        todayPrefix = null;
+        tomorrowPrefix = null;
         return;
     }
     
-    prefixesWithData.sort((a, b) => DAY_NAMES.indexOf(a) - DAY_NAMES.indexOf(b));
+    // Визначаємо очікуваний префікс за поточною прив'язкою
+    const expectedTodayPrefix = WEEK_TO_PREFIX[todayDayOfWeek];
     
-    const isTransitionPair = prefixesWithData.includes('seven') && 
-                             prefixesWithData.includes('one') && 
-                             prefixesWithData.length === 2;
+    // Перевіряємо, чи є очікуваний префікс в базі
+    const hasExpectedPrefix = prefixesWithData.includes(expectedTodayPrefix);
     
-    let smallerPrefix, largerPrefix;
-    if (isTransitionPair) {
-        smallerPrefix = 'seven'; largerPrefix = 'one';
-    } else {
-        smallerPrefix = prefixesWithData[0]; largerPrefix = prefixesWithData[1];
+    // Якщо очікуваного префікса немає - ЗБІЙ! Робимо перепризначення
+    if (!hasExpectedPrefix && prefixesWithData.length > 0) {
+        console.log('🔄 ЗБІЙ ГРАФІКА! Перепризначення днів...');
+        console.log('Очікували:', expectedTodayPrefix, 'Отримали:', prefixesWithData);
+        
+        // Беремо перший доступний префікс як сьогоднішній
+        const actualTodayPrefix = prefixesWithData[0];
+        const actualPrefixIndex = DAY_NAMES.indexOf(actualTodayPrefix);
+        
+        // Перераховуємо прив'язку: actualTodayPrefix = сьогоднішній день тижня
+        WEEK_TO_PREFIX = {};
+        for (let i = 0; i < 7; i++) {
+            const dayOfWeek = (todayDayOfWeek + i) % 7;
+            const prefixIndex = (actualPrefixIndex + i) % 7;
+            WEEK_TO_PREFIX[dayOfWeek] = DAY_NAMES[prefixIndex];
+        }
+        
+        console.log('Нова прив\'язка:', WEEK_TO_PREFIX);
+        
+        // Зберігаємо нову прив'язку в localStorage
+        localStorage.setItem('weekToPrefixMapping', JSON.stringify(WEEK_TO_PREFIX));
     }
     
-    if (checkLastSlotPast(smallerPrefix, qData)) {
-        todayPrefix = largerPrefix; tomorrowPrefix = null;
-    } else {
-        todayPrefix = smallerPrefix; tomorrowPrefix = largerPrefix;
-    }
+    // Визначаємо префікси на основі (можливо оновленої) прив'язки
+    const todayPrefixByWeek = WEEK_TO_PREFIX[todayDayOfWeek];
+    const tomorrowPrefixByWeek = WEEK_TO_PREFIX[tomorrowDayOfWeek];
+    
+    // Перевіряємо, чи є дані для цих префіксів
+    const hasTodayData = prefixesWithData.includes(todayPrefixByWeek);
+    const hasTomorrowData = prefixesWithData.includes(tomorrowPrefixByWeek);
+    
+    todayPrefix = hasTodayData ? todayPrefixByWeek : null;
+    tomorrowPrefix = hasTomorrowData ? tomorrowPrefixByWeek : null;
 }
 
 function getH(t) {
