@@ -1,6 +1,16 @@
 const API_URL = "https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_new.json";
 const MINUTES_IN_DAY = 1440;
 const DAY_NAMES = ["one", "two", "three", "four", "five", "six", "seven"];
+// Початкова прив'язка префіксів до днів тижня
+let WEEK_TO_PREFIX = {
+    4: "one",    // четвер
+    5: "two",    // п'ятниця
+    6: "three",  // субота
+    0: "four",   // неділя
+    1: "five",   // понеділок
+    2: "six",    // вівторок
+    3: "seven"   // середа
+};
 
 let db = null, curQ = null, currentIdx = 0, todayPrefix = null, tomorrowPrefix = null;
 
@@ -9,6 +19,17 @@ const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5
 
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
+
+    // Завантажуємо збережену прив'язку (якщо була перепризначення)
+    const savedMapping = localStorage.getItem('weekToPrefixMapping');
+    if (savedMapping) {
+        try {
+            WEEK_TO_PREFIX = JSON.parse(savedMapping);
+            console.log('📥 Завантажено збережену прив\'язку:', WEEK_TO_PREFIX);
+        } catch (e) {
+            console.error('Помилка завантаження прив\'язки:', e);
+        }
+    }
 
     curQ = localStorage.getItem('selectedQueue');
     try {
@@ -85,22 +106,19 @@ function determineCycleDays() {
     
     const now = new Date();
     const todayDayOfWeek = now.getDay(); // 0=неділя, 1=понеділок, ..., 6=субота
-    
-    // Map Sunday (0) to 6 for 0-indexed DAY_NAMES (0-6)
-    const todayIndex = (todayDayOfWeek === 0) ? 6 : todayDayOfWeek - 1;
-    const tomorrowIndex = (todayIndex + 1) % DAY_NAMES.length;
+    const tomorrowDayOfWeek = (todayDayOfWeek + 1) % 7;
 
-    todayPrefix = DAY_NAMES[todayIndex];
-    tomorrowPrefix = DAY_NAMES[tomorrowIndex];
+    // Визначаємо префікси на основі фіксованої прив'язки
+    const todayPrefixByWeek = WEEK_TO_PREFIX[todayDayOfWeek];
+    const tomorrowPrefixByWeek = WEEK_TO_PREFIX[tomorrowDayOfWeek];
     
-    // Check if data actually exists for these prefixes in the database
+    // Перевіряємо, чи є дані для цих префіксів в базі
     const qData = db[`${curQ}_cherg`];
-    if (!Object.keys(qData).some(k => k.startsWith(todayPrefix + '_') && qData[k] && qData[k].includes(':'))) {
-        todayPrefix = null;
-    }
-    if (!Object.keys(qData).some(k => k.startsWith(tomorrowPrefix + '_') && qData[k] && qData[k].includes(':'))) {
-        tomorrowPrefix = null;
-    }
+    const prefixesWithData = Object.keys(qData).filter(k => qData[k] && qData[k].includes(':')).map(k => k.split('_')[0]);
+
+    // Встановлюємо префікси, тільки якщо для них існують дані
+    todayPrefix = prefixesWithData.includes(todayPrefixByWeek) ? todayPrefixByWeek : null;
+    tomorrowPrefix = prefixesWithData.includes(tomorrowPrefixByWeek) ? tomorrowPrefixByWeek : null;
 }
 
 function getH(t) {
