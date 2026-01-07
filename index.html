@@ -12,7 +12,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div class="container">
     <div class="logo-container">
         <svg viewBox="0 0 280 64">
@@ -23,30 +22,29 @@
     </div>
     <h2>Графік відключень</h2>
     <div class="update-status" id="status">Завантаження...</div>
-
     <h1 id="title">Оберіть чергу</h1>
     <div id="grid" class="queue-grid"></div>
-
     <div id="box" class="hidden">
         <div class="tabs">
-            <div id="tabL" class="tab active" onclick="setTab(0)">Сьогодні</div>
-            <div id="tabR" class="tab" onclick="setTab(1)">Завтра</div>
+            <div id="tabL" class="tab active" onclick="setTab(0)">
+                Сьогодні
+                <div class="weather-mini" id="weatherToday"></div>
+            </div>
+            <div id="tabR" class="tab" onclick="setTab(1)">
+                Завтра
+                <div class="weather-mini" id="weatherTomorrow"></div>
+            </div>
         </div>
         <div id="content"></div>
         <button class="btn-change" onclick="resetView()">Змінити чергу</button>
-
         <div class="separator"></div>
-        
         <div class="wiki-box">
             <p><b>Довідка</b></p>
-            <p><b>Іконка календаря:</b> Після натискання на іконку буде створено подію у вашому Google Календарі з автоматично заповненою назвою та часом відключення. Час нагадування перед подією буде встановлено згідно з вашими стандартними налаштуваннями календаря, і ви можете змінити його вручну.</p>
+            <p><b>Іконка календаря:</b> Після натискання на іконку буде створено подію у вашому Google Календарі (на відключення або наявність світла) з автоматично заповненою назвою та часом. Час нагадування перед подією буде встановлено згідно з вашими стандартними налаштуваннями календаря.</p>
+            <p><b>Погода:</b> Інформація про погоду відображається виключно для Миколаївки. Графіки відключень можуть стосуватися й інших населених пунктів області.</p>
             <p><b>Важливо:</b> Даний графік не є офіційним джерелом інформації. Дані взяті з відкритих джерел і можуть бути неточними.</p>
-        </div>
-    </div>
-
-    <div class="footer">
-        &copy; <span id="year"></span> Mykhailo Anisimov
-    </div>
+        </div>    </div>
+    <div class="footer">&copy; <span id="year"></span> Mykhailo Anisimov</div>
 </div>
 
 <script src="script.js" defer></script>

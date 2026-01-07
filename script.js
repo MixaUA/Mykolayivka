@@ -1,218 +1,226 @@
 const API_URL = "https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_new.json";
-const MINUTES_IN_DAY = 1440;
-const DAY_NAMES = ["one", "two", "three", "four", "five", "six", "seven"];
-// Початкова прив'язка префіксів до днів тижня
-let WEEK_TO_PREFIX = {
-    4: "one",    // четвер
-    5: "two",    // п'ятниця
-    6: "three",  // субота
-    0: "four",   // неділя
-    1: "five",   // понеділок
-    2: "six",    // вівторок
-    3: "seven"   // середа
+const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=50.2699&longitude=34.3961&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Europe/Kiev&forecast_days=2";
+const P_LIST = ["one", "two", "three", "four", "five", "six", "seven"];
+const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>`;
+const clockSVG = `<svg class="loader-clock" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite"/></path></svg>`;
+
+const weatherIcons = {
+    sun: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="32" cy="32" r="11"/><line x1="32" y1="8" x2="32" y2="14"><animate attributeName="y2" values="14;16;14" dur="2s" repeatCount="indefinite"/></line><line x1="32" y1="50" x2="32" y2="56"><animate attributeName="y1" values="50;48;50" dur="2s" repeatCount="indefinite"/></line><line x1="8" y1="32" x2="14" y2="32"><animate attributeName="x2" values="14;16;14" dur="2s" repeatCount="indefinite"/></line><line x1="50" y1="32" x2="56" y2="32"><animate attributeName="x1" values="50;48;50" dur="2s" repeatCount="indefinite"/></line><line x1="13" y1="13" x2="17.5" y2="17.5"><animate attributeName="x2" values="17.5;19;17.5" attributeName="y2" values="17.5;19;17.5" dur="2s" repeatCount="indefinite"/></line><line x1="46.5" y1="46.5" x2="51" y2="51"><animate attributeName="x1" values="46.5;45;46.5" attributeName="y1" values="46.5;45;46.5" dur="2s" repeatCount="indefinite"/></line><line x1="13" y1="51" x2="17.5" y2="46.5"><animate attributeName="x2" values="17.5;19;17.5" dur="2s" repeatCount="indefinite"/></line><line x1="46.5" y1="17.5" x2="51" y2="13"><animate attributeName="x1" values="46.5;45;46.5" dur="2s" repeatCount="indefinite"/></line></svg>`,
+    cloudSun: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="26" cy="22" r="8"/><line x1="26" y1="8" x2="26" y2="11"/><line x1="26" y1="33" x2="26" y2="36"/><line x1="12" y1="22" x2="15" y2="22"/><line x1="37" y1="22" x2="40" y2="22"/><line x1="15.5" y1="15.5" x2="17.5" y2="17.5"/><line x1="34.5" y1="26.5" x2="36.5" y2="28.5"/><path d="M20,48 Q16,48 16,44 Q16,40 20,40 Q20,36 24,36 Q28,36 28,40 L42,40 Q46,40 46,44 Q46,48 42,48 Z"><animateTransform attributeName="transform" type="translate" values="0,0; 1,0; 0,0" dur="4s" repeatCount="indefinite"/></path></svg>`,
+    cloud: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18,40 Q14,40 14,36 Q14,32 18,32 Q18,28 22,28 Q26,28 26,32 L38,32 Q42,32 42,36 Q42,40 38,40 Z"><animateTransform attributeName="transform" type="translate" values="0,0; 2,0; 0,0" dur="5s" repeatCount="indefinite"/></path><path d="M22,48 Q18,48 18,44 Q18,40 22,40 L46,40 Q50,40 50,44 Q50,48 46,48 Z"><animateTransform attributeName="transform" type="translate" values="0,0; -2,0; 0,0" dur="5s" repeatCount="indefinite"/></path></svg>`,
+    rain: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20,32 Q16,32 16,28 Q16,24 20,24 Q20,20 24,20 Q28,20 28,24 L40,24 Q44,24 44,28 Q44,32 40,32 Z"/><line x1="24" y1="38" x2="24" y2="46"><animate attributeName="y1" values="38;40;38" dur="0.8s" repeatCount="indefinite"/><animate attributeName="y2" values="46;48;46" dur="0.8s" repeatCount="indefinite"/></line><line x1="32" y1="36" x2="32" y2="44"><animate attributeName="y1" values="36;38;36" dur="0.8s" begin="0.2s" repeatCount="indefinite"/><animate attributeName="y2" values="44;46;44" dur="0.8s" begin="0.2s" repeatCount="indefinite"/></line><line x1="40" y1="38" x2="40" y2="46"><animate attributeName="y1" values="38;40;38" dur="0.8s" begin="0.4s" repeatCount="indefinite"/><animate attributeName="y2" values="46;48;46" dur="0.8s" begin="0.4s" repeatCount="indefinite"/></line></svg>`,
+    snow: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20,32 Q16,32 16,28 Q16,24 20,24 Q20,20 24,20 Q28,20 28,24 L40,24 Q44,24 44,28 Q44,32 40,32 Z"/><g><line x1="24" y1="38" x2="24" y2="46"/><line x1="20" y1="42" x2="28" y2="42"/><line x1="21.5" y1="39.5" x2="26.5" y2="44.5"/><line x1="26.5" y1="39.5" x2="21.5" y2="44.5"/><animateTransform attributeName="transform" type="translate" values="0,0; 0,2; 0,0" dur="2s" repeatCount="indefinite"/></g><g><line x1="40" y1="38" x2="40" y2="46"/><line x1="36" y1="42" x2="44" y2="42"/><line x1="37.5" y1="39.5" x2="42.5" y2="44.5"/><line x1="42.5" y1="39.5" x2="37.5" y2="44.5"/><animateTransform attributeName="transform" type="translate" values="0,0; 0,2; 0,0" dur="2s" begin="0.5s" repeatCount="indefinite"/></g></svg>`
 };
 
-let db = null, curQ = null, currentIdx = 0, todayPrefix = null, tomorrowPrefix = null;
-
-const clockSVG = `<svg class="loader-clock" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite"/></path></svg>`;
-const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>`;
+// Цикл: 0-Пн, 1-Вт, 2-Ср, 3-Чт, 4-Пт, 5-Сб, 6-Нд
+let dayPrefixMap = JSON.parse(localStorage.getItem('calibratedMap')) || [5, 6, 0, 1, 2, 3, 4];
+let db = null, curQ = localStorage.getItem('selectedQueue'), currentIdx = 0, weatherData = null;
 
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
+    await fetchData();
+    await fetchWeather();
+    renderGrid();
+    if (curQ) selectQ(curQ);
+    setInterval(() => { if (curQ) render(); }, 60000);
+}
 
-    // Завантажуємо збережену прив'язку (якщо була перепризначення)
-    const savedMapping = localStorage.getItem('weekToPrefixMapping');
-    if (savedMapping) {
-        try {
-            WEEK_TO_PREFIX = JSON.parse(savedMapping);
-            console.log('📥 Завантажено збережену прив\'язку:', WEEK_TO_PREFIX);
-        } catch (e) {
-            console.error('Помилка завантаження прив\'язки:', e);
-        }
-    }
-
-    curQ = localStorage.getItem('selectedQueue');
+async function fetchData() {
     try {
         const r = await fetch(`${API_URL}?t=${Date.now()}`);
         db = await r.json();
-
-        // ПЕРЕВІРКА НА АКТУАЛЬНІСТЬ (якщо файл старіший за 48 годин)
-        if (!isDataFresh(db.update_time)) {
-            document.getElementById('status').innerText = `Дані застаріли: ${db.update_time}`;
-            db = null; // Обнуляємо дані, щоб спрацював вивід "Графік відсутній"
-        } else {
-            document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
-        }
-        
-        renderGrid();
-        if (curQ) selectQ(curQ);
-        setInterval(() => { if (db && curQ) render(); }, 60000);
-    } catch (e) { document.getElementById('status').innerText = "Помилка завантаження"; }
+        document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
+        if (curQ) syncLogic();
+        render();
+    } catch (e) { document.getElementById('status').innerText = "Помилка зв'язку"; }
 }
 
-// Нова функція перевірки свіжості файлу
-function isDataFresh(updateTimeStr) {
-    if (!updateTimeStr) return false;
-    
-    const months = {
-        "січня": 0, "лютого": 1, "березня": 2, "квітня": 3, "травня": 4, "червня": 5,
-        "липня": 6, "серпня": 7, "вересня": 8, "жовтня": 9, "листопада": 10, "грудня": 11
-    };
+async function fetchWeather() {
+    const cached = localStorage.getItem('weatherCache');
+    if (cached) {
+        const data = JSON.parse(cached);
+        if (Date.now() - data.timestamp < 3600000) {
+            weatherData = data;
+            return;
+        }
+    }
     
     try {
-        const parts = updateTimeStr.split(' '); // ["1", "січня", "о", "21:33"]
-        const day = parseInt(parts[0]);
-        const month = months[parts[1]];
-        const timeParts = parts[3].split(':');
-        
-        const updateDate = new Date();
-        updateDate.setMonth(month);
-        updateDate.setDate(day);
-        updateDate.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), 0, 0);
-        
-        // Коригування року для межі грудня/січня
-        if (new Date().getMonth() === 0 && month === 11) {
-            updateDate.setFullYear(new Date().getFullYear() - 1);
-        }
-
-        const diffHours = (new Date() - updateDate) / (1000 * 60 * 60);
-        return diffHours < 48; // Повертає true, якщо дані свіжі (менше 48 годин)
+        const r = await fetch(WEATHER_API);
+        const data = await r.json();
+        weatherData = {
+            timestamp: Date.now(),
+            today: {
+                max: Math.round(data.daily.temperature_2m_max[0]),
+                min: Math.round(data.daily.temperature_2m_min[0]),
+                code: data.daily.weathercode[0]
+            },
+            tomorrow: {
+                max: Math.round(data.daily.temperature_2m_max[1]),
+                min: Math.round(data.daily.temperature_2m_min[1]),
+                code: data.daily.weathercode[1]
+            }
+        };
+        localStorage.setItem('weatherCache', JSON.stringify(weatherData));
     } catch (e) {
-        return true; // Якщо формат дати в базі зламається, пропускаємо перевірку
+        weatherData = null;
     }
 }
 
-function renderGrid() {
-    const g = document.getElementById('grid');
-    const qs = ["1.1","1.2","2.1","2.2","3.1","3.2","4.1","4.2","5.1","5.2","6.1","6.2"];
-    g.innerHTML = qs.map(q => `<button class="btn-q" onclick="selectQ('${q}')">${q}</button>`).join('');
+function getWeatherIcon(code) {
+    if (code === 0) return weatherIcons.sun;
+    if (code >= 1 && code <= 3) return weatherIcons.cloudSun;
+    if (code >= 45 && code <= 48) return weatherIcons.cloud;
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return weatherIcons.rain;
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return weatherIcons.snow;
+    return weatherIcons.cloud;
 }
 
-function selectQ(q) {
-    curQ = q;
-    localStorage.setItem('selectedQueue', q);
-    document.getElementById('grid').classList.add('hidden');
-    document.getElementById('box').classList.remove('hidden');
-    document.getElementById('title').innerText = `Черга ${q}`;
-    determineCycleDays();
-    render();
-}
-
-function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
-function setTab(i) { currentIdx = i; render(); }
-
-function determineCycleDays() {
+function syncLogic() {
     if (!db || !curQ) return;
-    
-    const now = new Date();
-    const todayDayOfWeek = now.getDay(); // 0=неділя, 1=понеділок, ..., 6=субота
-    const tomorrowDayOfWeek = (todayDayOfWeek + 1) % 7;
+    const [dPart] = db.update_time.split(' ');
+    const [d, m, y] = dPart.split('.').map(Number);
+    const fileDate = new Date(y, m - 1, d); fileDate.setHours(0,0,0,0);
+    const now = new Date(); now.setHours(0,0,0,0);
+    const daysDiff = Math.round((now - fileDate) / 86400000);
 
-    // Визначаємо префікси на основі фіксованої прив'язки
-    const todayPrefixByWeek = WEEK_TO_PREFIX[todayDayOfWeek];
-    const tomorrowPrefixByWeek = WEEK_TO_PREFIX[tomorrowDayOfWeek];
-    
-    // Перевіряємо, чи є дані для цих префіксів в базі
-    const qData = db[`${curQ}_cherg`];
-    const prefixesWithData = Object.keys(qData).filter(k => qData[k] && qData[k].includes(':')).map(k => k.split('_')[0]);
+    // Механізм коригування активується ТІЛЬКИ якщо файл вчорашній
+    if (daysDiff === 1) {
+        const qData = db[`${curQ}_cherg`];
+        const keys = Object.keys(qData);
+        const available = [...new Set(keys.map(k => k.split('_')[0]))];
+        available.sort((a,b) => P_LIST.indexOf(a) - P_LIST.indexOf(b));
+        
+        const lastPref = available[available.length - 1];
+        const lastIdxInFile = P_LIST.indexOf(lastPref);
+        const todayIdx = (now.getDay() + 6) % 7; 
 
-    // Встановлюємо префікси, тільки якщо для них існують дані
-    todayPrefix = prefixesWithData.includes(todayPrefixByWeek) ? todayPrefixByWeek : null;
-    tomorrowPrefix = prefixesWithData.includes(tomorrowPrefixByWeek) ? tomorrowPrefixByWeek : null;
-}
-
-function getH(t) {
-    const [s, e] = t.split('-').map(v => { const [h, m] = v.split(':').map(Number); return h * 60 + m; });
-    let d = e - s; if (d <= 0) d += MINUTES_IN_DAY;
-    return (d/60 % 1 === 0 ? d/60 : (d/60).toFixed(1)) + "г";
-}
-
-function addToCalendar(slotTime, isToday) {
-    const [startTime, endTime] = slotTime.split('-');
-    const eventDate = new Date();
-    if (!isToday) eventDate.setDate(eventDate.getDate() + 1);
-    
-    const formatG = (timeStr, isEnd = false) => {
-        const [h, m] = timeStr.split(':');
-        const d = new Date(eventDate);
-        d.setHours(parseInt(h), parseInt(m), 0);
-        if (isEnd && timeStr < startTime) d.setDate(d.getDate() + 1);
-        return d.toISOString().replace(/-|:|\.\d\d\d/g, "");
-    };
-    const start = formatG(startTime), end = formatG(endTime, true);
-    const eventTitle = `Черга ${curQ} ⚡ Відключення світла з ${startTime} по ${endTime}`;
-    window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${start}/${end}&details=${encodeURIComponent('Миколаївка, графік відключень')}&sf=true&output=xml`, '_blank');
+        if (dayPrefixMap[todayIdx] !== lastIdxInFile) {
+            const offset = (lastIdxInFile - todayIdx + 7) % 7;
+            for (let i = 0; i < 7; i++) dayPrefixMap[i] = (i + offset) % 7;
+            localStorage.setItem('calibratedMap', JSON.stringify(dayPrefixMap));
+        }
+    } else if (daysDiff > 1) {
+        document.getElementById('status').innerText = `${db.update_time} ⚠️ Застаріло`;
+    }
 }
 
 function render() {
     if (!db || !curQ) return;
     const cont = document.getElementById('content');
     const qData = db[`${curQ}_cherg`];
-    const targetPrefix = (currentIdx === 0) ? todayPrefix : tomorrowPrefix;
+    const now = new Date();
+    const nowM = now.getHours() * 60 + now.getMinutes();
+    const todayIdx = (now.getDay() + 6) % 7;
     
     document.getElementById('tabL').classList.toggle('active', currentIdx === 0);
     document.getElementById('tabR').classList.toggle('active', currentIdx === 1);
-    
-    if (!targetPrefix) {
-        cont.innerHTML = `<div class="no-actual">Графік відсутній</div>`;
+
+    // Оновлення погоди у вкладках
+    if (weatherData) {
+        const todayW = weatherData.today;
+        const tomorrowW = weatherData.tomorrow;
+        document.getElementById('weatherToday').innerHTML = `
+            ${getWeatherIcon(todayW.code)}
+            <span class="temp-range">${todayW.max > 0 ? '+' : ''}${todayW.max}° / ${todayW.min > 0 ? '+' : ''}${todayW.min}°</span>
+        `;
+        document.getElementById('weatherTomorrow').innerHTML = `
+            ${getWeatherIcon(tomorrowW.code)}
+            <span class="temp-range">${tomorrowW.max > 0 ? '+' : ''}${tomorrowW.max}° / ${tomorrowW.min > 0 ? '+' : ''}${tomorrowW.min}°</span>
+        `;
+    }
+
+    // Перевірка застою для вкладки "Завтра"
+    const [dPart] = db.update_time.split(' ');
+    const [d, m, y] = dPart.split('.').map(Number);
+    const fileDate = new Date(y, m - 1, d); fileDate.setHours(0,0,0,0);
+    const nowDate = new Date(); nowDate.setHours(0,0,0,0);
+    const daysDiff = Math.round((nowDate - fileDate) / 86400000);
+
+    if (daysDiff > 1 && currentIdx === 1) {
+        cont.innerHTML = `<div class="no-actual">⚠️ Дані застарілі</div>`;
         return;
     }
-    
-    const slots = Object.keys(qData)
-        .filter(k => k.startsWith(targetPrefix + '_'))
-        .map(k => qData[k])
-        .filter(v => v && v.includes(':') && !v.includes('інформації'));
-    
+
+    const targetDayIdx = currentIdx === 0 ? todayIdx : (todayIdx + 1) % 7;
+    const pref = P_LIST[dayPrefixMap[targetDayIdx]];
+
+    const slots = Object.keys(qData).filter(k => k.startsWith(pref + '_')).map(k => {
+        const val = qData[k];
+        if (val.includes("Немає")) return null;
+        const [s, e] = val.split('-').map(t => {
+            const [h, m] = t.split(':').map(Number); return h * 60 + m;
+        });
+        return { start: s, end: (e === 0 ? 1440 : e), type: 'off' };
+    }).filter(v => v !== null).sort((a,b) => a.start - b.start);
+
     if (slots.length === 0) {
-        cont.innerHTML = `<p style='margin-top:30px; opacity:0.3'>Графік відсутній</p>`;
+        cont.innerHTML = `<div class="no-actual">Графік на ${currentIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
         return;
     }
-    
-    const now = new Date();
-    const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const isToday = (currentIdx === 0);
-    const targetDate = new Date(todayZero);
-    if (!isToday) targetDate.setDate(targetDate.getDate() + 1);
-    
-    const nowMs = now.getTime();
-    const oneHourMs = 60 * 60 * 1000;
-    let foundActive = false;
-    let anyFuture = false;
 
-    const html = slots.map(s => {
-        const [sT, eT] = s.split('-');
-        const sStart = new Date(targetDate);
-        const [sH, sM] = sT.split(':').map(Number);
-        sStart.setHours(sH, sM, 0, 0);
+    let full = []; let last = 0;
+    slots.forEach(s => {
+        if (s.start > last) full.push({ start: last, end: s.start, type: 'on' });
+        full.push(s); last = s.end;
+    });
+    if (last < 1440) full.push({ start: last, end: 1440, type: 'on' });
+
+    const display = full.filter(ev => currentIdx === 0 ? ev.end > nowM : true);
+
+    cont.innerHTML = display.map(ev => {
+        const isToday = currentIdx === 0;
+        const s = `${Math.floor(ev.start/60).toString().padStart(2,'0')}:${(ev.start%60).toString().padStart(2,'0')}`;
+        const e = `${Math.floor(ev.end/60 % 24).toString().padStart(2,'0')}:${(ev.end%60).toString().padStart(2,'0')}`;
+        const isCur = isToday && nowM >= ev.start && nowM < ev.end;
         
-        const sEnd = new Date(targetDate);
-        const [eH, eM] = eT.split(':').map(Number);
-        sEnd.setHours(eH, eM, 0, 0);
-        if (sEnd <= sStart) sEnd.setDate(sEnd.getDate() + 1);
-
-        const isPast = nowMs >= sEnd.getTime();
-        const isCurrent = isToday && nowMs >= sStart.getTime() && nowMs < sEnd.getTime() && !foundActive;
-        if (isCurrent) foundActive = true;
-        if (!isPast) anyFuture = true;
+        // ЗАХИСНИЙ МЕХАНІЗМ: за 60 хв до початку кнопка блокується
+        const isLocked = isToday && (ev.start - nowM <= 60);
         
-        const canAddToCalendar = !isPast && !isCurrent && (!isToday || (sStart.getTime() - nowMs) > oneHourMs);
-
-        return `<div class="slot ${isCurrent ? 'current' : ''} ${isPast ? 'past' : ''}">
-            <div class="time-box"><span class="time">${s}</span>${isCurrent ? clockSVG : ''}</div>
-            <div class="slot-right">
-                <span class="dur">${getH(s)}</span>
-                <div class="calendar-btn ${!canAddToCalendar ? 'past' : ''}" onclick="${!canAddToCalendar ? '' : `addToCalendar('${s}', ${isToday})`}">
-                    ${calendarSVG}
+        const dur = (ev.end - ev.start) / 60;
+        return `
+            <div class="slot ${ev.type} ${isCur ? 'current' : ''}">
+                <div class="time-box"><span class="time">${s}-${e}</span></div>
+                <div class="slot-right">
+                    <span class="dur">${dur % 1 === 0 ? dur : dur.toFixed(1)} год/${ev.type==='off'?'викл':'вкл'}</span>
+                    <div style="width:32px; display:flex; justify-content:center;">
+                        ${isCur ? clockSVG : `
+                            <div class="calendar-btn ${isLocked ? 'disabled' : ''}" 
+                                 onclick="${isLocked ? '' : `addToCal('${s}-${e}', ${isToday}, '${ev.type}')`}">
+                                ${calendarSVG}
+                            </div>`}
+                    </div>
                 </div>
-            </div>
-        </div>`;
+            </div>`;
     }).join('');
+}
 
-    if (isToday && !anyFuture && slots.length > 0) {
-        cont.innerHTML = `<div class="no-actual">Графік більше не актуальний</div>`;
-    } else {
-        cont.innerHTML = html;
-    }
+function renderGrid() {
+    const qs = ["1.1","1.2","2.1","2.2","3.1","3.2","4.1","4.2","5.1","5.2","6.1","6.2"];
+    document.getElementById('grid').innerHTML = qs.map(q => `<button class="btn-q" onclick="selectQ('${q}')">${q}</button>`).join('');
+}
+
+function selectQ(q) {
+    curQ = q; localStorage.setItem('selectedQueue', q);
+    document.getElementById('grid').classList.add('hidden');
+    document.getElementById('box').classList.remove('hidden');
+    document.getElementById('title').innerText = `Черга ${q}`;
+    syncLogic(); render();
+}
+
+function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
+function setTab(i) { currentIdx = i; render(); }
+
+function addToCal(slot, isToday, type) {
+    const [sT, eT] = slot.split('-');
+    const d = new Date(); if (!isToday) d.setDate(d.getDate() + 1);
+    const iso = (t) => {
+        const [h, m] = t.split(':').map(Number);
+        const date = new Date(d); date.setHours(h, m, 0, 0);
+        return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+    };
+    const title = (type === 'off' ? `⚡ Відключення ${curQ}` : `💡 Світло ${curQ}`);
+    window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${iso(sT)}/${iso(eT)}&sf=true&output=xml`, '_blank');
 }
 
 function registerSW() {
@@ -254,7 +262,5 @@ function showUpdateBar(worker) {
     });
 }
 
-// Initial call for the main logic
 init();
-// Call to register the service worker
 registerSW();
