@@ -145,9 +145,25 @@ function render() {
     const targetDayIdx = currentIdx === 0 ? todayIdx : (todayIdx + 1) % 7;
     const pref = P_LIST[dayPrefixMap[targetDayIdx]];
 
-    const slots = Object.keys(qData).filter(k => k.startsWith(pref + '_')).map(k => {
+    // --- NEW LOGIC START ---
+    const allPrefKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_')).sort();
+
+    if (allPrefKeys.length === 0) {
+        cont.innerHTML = `<div class="no-actual">Графік на ${currentIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
+        return;
+    }
+
+    const firstSlotValue = qData[allPrefKeys[0]];
+    if (firstSlotValue && !firstSlotValue.includes(':')) { // Check if it's a message, not a time range
+        cont.innerHTML = `<div class="no-actual" style="margin-top: 50px; font-size: 1.2rem;">${firstSlotValue}</div>`;
+        return;
+    }
+    // --- NEW LOGIC END ---
+
+    const slots = allPrefKeys.map(k => {
         const val = qData[k];
-        if (val.includes("Немає")) return null;
+        // Ensure only time-based values are processed
+        if (!val.includes(':')) return null; 
         const [s, e] = val.split('-').map(t => {
             const [h, m] = t.split(':').map(Number); return h * 60 + m;
         });
