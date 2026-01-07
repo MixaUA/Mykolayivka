@@ -22,7 +22,7 @@ h1 { font-weight: 400; font-size: 1.4rem; margin-bottom: 25px; }
 .tab { flex: 1; padding: 15px; cursor: pointer; opacity: 0.4; border-bottom: 3px solid transparent; font-size: 1.1rem; background: none; border: none; color: var(--main); outline: none; }
 .tab.active { opacity: 1; border-bottom: 3px solid var(--main); font-weight: 700; }
 .weather-mini { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 5px; font-size: 0.85rem; font-weight: 400; }
-.weather-mini svg { width: 64px; height: 64px; }
+.weather-mini svg { width: 32px; height: 32px; }
 .temp-range { white-space: nowrap; }
 
 .slot { display: flex; justify-content: space-between; padding: 18px 10px; border-bottom: 1px solid var(--line); width: 100%; align-items: center; box-sizing: border-box; }
