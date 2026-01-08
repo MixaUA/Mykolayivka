@@ -5,11 +5,127 @@ const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5
 const clockSVG = `<svg class="loader-clock" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite"/></path></svg>`;
 
 const weatherIcons = {
-    sun: `<svg viewBox="0 0 64 64"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"><circle cx="32" cy="32" r="10"/><g><line x1="32" y1="4" x2="32" y2="12"/><line x1="32" y1="52" x2="32" y2="60"/><line x1="4" y1="32" x2="12" y2="32"/><line x1="52" y1="32" x2="60" y2="32"/><line x1="12" y1="12" x2="18" y2="18"/><line x1="46" y1="46" x2="52" y2="52"/><line x1="12" y1="52" x2="18" y2="46"/><line x1="46" y1="18" x2="52" y2="12"/><animateTransform attributeName="transform" type="rotate" from="0 32 32" to="360 32 32" dur="20s" repeatCount="indefinite"/></g></g></svg>`,
-    cloudSun: `<svg viewBox="0 0 64 64"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"><g transform="scale(0.6) translate(-2, -8)"><circle cx="32" cy="32" r="10" fill="none" stroke="currentColor" stroke-width="2"/><g><line x1="32" y1="4" x2="32" y2="12"/><line x1="32" y1="52" x2="32" y2="60"/><line x1="4" y1="32" x2="12" y2="32"/><line x1="52" y1="32" x2="60" y2="32"/><line x1="12" y1="12" x2="18" y2="18"/><line x1="46" y1="46" x2="52" y2="52"/><line x1="12" y1="52" x2="18" y2="46"/><line x1="46" y1="18" x2="52" y2="12"/><animateTransform attributeName="transform" type="rotate" from="0 32 32" to="360 32 32" dur="20s" repeatCount="indefinite"/></g></g><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="currentColor" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/></g></svg>`,
-    cloud: `<svg viewBox="0 0 64 64"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"><path d="M18 40h28a8 8 0 0 0 0-16 14 14 0 0 0-28-2A8 8 0 0 0 18 40"><animateTransform attributeName="transform" type="translate" values="0 0; 2 0; -2 0; 0 0" dur="8s" repeatCount="indefinite"/></path></g></svg>`,
-    rain: `<svg viewBox="0 0 64 64"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"><path d="M18 32h28a8 8 0 0 0 0-16 14 14 0 0 0-28-2A8 8 0 0 0 18 32"/><g><line x1="26" y1="40" x2="26" y2="50"/><animateTransform attributeName="transform" type="translate" values="0 0; 0 10; 0 0" dur="1.5s" begin="0s" repeatCount="indefinite"/></g><g><line x1="34" y1="40" x2="34" y2="50"/><animateTransform attributeName="transform" type="translate" values="0 0; 0 10; 0 0" dur="1.5s" begin="0.3s" repeatCount="indefinite"/></g><g><line x1="42" y1="40" x2="42" y2="50"/><animateTransform attributeName="transform" type="translate" values="0 0; 0 10; 0 0" dur="1.5s" begin="0.6s" repeatCount="indefinite"/></g></g></svg>`,
-    snow: `<svg viewBox="0 0 64 64"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"><path d="M18 32h28a8 8 0 0 0 0-16 14 14 0 0 0-28-2A8 8 0 0 0 18 32"/><g><line x1="28" y1="40" x2="28" y2="46"/><line x1="25" y1="43" x2="31" y2="43"/><line x1="26" y1="41" x2="30" y2="45"/><line x1="30" y1="41" x2="26" y2="45"/><animateTransform attributeName="transform" type="translate" values="0 0; 0 8; 0 0" dur="2s" begin="0s" repeatCount="indefinite"/></g><g><line x1="40" y1="40" x2="40" y2="46"/><line x1="37" y1="43" x2="43" y2="43"/><line x1="38" y1="41" x2="42" y2="45"/><line x1="42" y1="41" x2="38" y2="45"/><animateTransform attributeName="transform" type="translate" values="0 0; 0 8; 0 0" dur="2s" begin="0.8s" repeatCount="indefinite"/></g></g></svg>`
+    sun: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <g id="day">
+            <g transform="translate(32,32)">
+                <g class="am-weather-sun am-weather-sun-shiny am-weather-easing-ease-in-out">
+                    <g>
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" />
+                    </g>
+                    <g transform="rotate(45)">
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" />
+                    </g>
+                    <g transform="rotate(90)">
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" />
+                    </g>
+                    <g transform="rotate(135)">
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" />
+                    </g>
+                    <g transform="rotate(180)">
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" />
+                    </g>
+                    <g transform="rotate(225)">
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" />
+                    </g>
+                    <g transform="rotate(270)">
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" />
+                    </g>
+                    <g transform="rotate(315)">
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" />
+                    </g>
+                </g>
+                <circle cx="0" cy="0" fill="white" r="7" stroke="black" stroke-width="1.5"/>
+            </g>
+        </g>
+    </svg>`,
+    cloudSun: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <g id="cloudy-day-1">
+            <g transform="translate(20,10)">
+                <g transform="translate(0,16)">
+                    <g class="am-weather-sun">
+                        <g>
+                            <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/>
+                        </g>
+                        <g transform="rotate(45)">
+                            <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/>
+                        </g>
+                        <g transform="rotate(90)">
+                            <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/>
+                        </g>
+                        <g transform="rotate(135)">
+                            <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/>
+                        </g>
+                        <g transform="rotate(180)">
+                            <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/>
+                        </g>
+                        <g transform="rotate(225)">
+                            <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/>
+                        </g>
+                        <g transform="rotate(270)">
+                            <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/>
+                        </g>
+                        <g transform="rotate(315)">
+                            <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/>
+                        </g>
+                    </g>
+                    <circle cx="0" cy="0" fill="white" r="5" stroke="black" stroke-width="1.5"/>
+                </g>
+                <g>
+                    <path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/>
+                </g>
+            </g>
+        </g>
+    </svg>`,
+    cloud: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <g id="cloudy">
+            <g transform="translate(20,10)">
+                <g class="am-weather-cloud-1">
+                    <path d="M47.7,35.4     c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3     c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-10,-8), scale(0.6)"/>
+                </g>
+                <g class="am-weather-cloud-2">
+                    <path d="M47.7,35.4     c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3     c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/>
+                </g>
+            </g>
+        </g>
+    </svg>`,
+    rain: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <g id="rainy-5">
+            <g transform="translate(20,10)">
+                <g>
+                    <path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/>
+                </g>
+            </g>
+            <g transform="translate(34,46), rotate(10)">
+                <line class="am-weather-rain-1" fill="none" stroke="black" stroke-dasharray="4,7" stroke-linecap="round" stroke-width="2" transform="translate(-6,1)" x1="0" x2="0" y1="0" y2="8" />
+                <line class="am-weather-rain-2" fill="none" stroke="black" stroke-dasharray="4,7" stroke-linecap="round" stroke-width="2" transform="translate(0,-1)" x1="0" x2="0" y1="0" y2="8" />
+            </g>
+        </g>
+    </svg>`,
+    snow: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <g id="snowy-5">
+            <g transform="translate(20,10)">
+                <g>
+                    <path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/>
+                </g>
+                <g class="am-weather-snow-1">
+                    <g transform="translate(7,28)">
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.2" transform="translate(0,9), rotate(0)" x1="0" x2="0" y1="-2.5" y2="2.5" />
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(45)" x1="0" x2="0" y1="-2.5" y2="2.5" />
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(90)" x1="0" x2="0" y1="-2.5" y2="2.5" />
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(135)" x1="0" x2="0" y1="-2.5" y2="2.5" />
+                    </g>
+                </g>
+                <g class="am-weather-snow-2">
+                    <g transform="translate(16,28)">
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.2" transform="translate(0,9), rotate(0)" x1="0" x2="0" y1="-2.5" y2="2.5" />
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(45)" x1="0" x2="0" y1="-2.5" y2="2.5" />
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(90)" x1="0" x2="0" y1="-2.5" y2="2.5" />
+                        <line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(135)" x1="0" x2="0" y1="-2.5" y2="2.5" />
+                    </g>
+                </g>
+            </g>
+        </g>
+    </svg>`
 };
 
 // Цикл: 0-Пн, 1-Вт, 2-Ср, 3-Чт, 4-Пт, 5-Сб, 6-Нд
