@@ -377,14 +377,6 @@ function registerSW() {
         .catch(err => {
             console.log('ServiceWorker registration failed: ', err);
         });
-    
-    let refreshing;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (refreshing) return;
-        localStorage.removeItem('weatherCache'); // Clear stale weather cache
-        window.location.reload();
-        refreshing = true;
-    });
 }
 
 function showUpdateBar(worker) {
@@ -398,6 +390,21 @@ function showUpdateBar(worker) {
 
     document.getElementById('update-button').addEventListener('click', () => {
         worker.postMessage({ action: 'skipWaiting' });
+
+        // Aggressive update: unregister, then reload
+        setTimeout(() => {
+            navigator.serviceWorker.getRegistration().then(reg => {
+                if (reg) {
+                    reg.unregister().then(() => {
+                        localStorage.removeItem('weatherCache'); // Also clear weather cache
+                        window.location.reload(true);
+                    });
+                } else {
+                    localStorage.removeItem('weatherCache');
+                    window.location.reload(true);
+                }
+            });
+        }, 500);
     });
 }
 
