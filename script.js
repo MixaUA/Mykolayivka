@@ -361,7 +361,7 @@ function registerSW() {
         return;
     }
     
-    navigator.serviceWorker.register('./sw.js')
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
         .then(registration => {
             console.log('ServiceWorker registration successful');
 
