@@ -16,18 +16,17 @@ const weatherIcons = {
 
 let dayPrefixMap = JSON.parse(localStorage.getItem('calibratedMap')) || [5, 6, 0, 1, 2, 3, 4];
 let db = null, curQ = localStorage.getItem('selectedQueue'), currentIdx = 0, weatherData = null;
-let preparedSchedule = { today: [], tomorrow: [], todayMessage: null, tomorrowMessage: null };
+let timerData = null;
 
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
     await fetchData();
     await fetchWeather();
     renderGrid();
-    if (curQ) {
-        selectQ(curQ);
-    }
-    setInterval(() => { if (curQ) fetchData(); }, 600000);
+    if (curQ) selectQ(curQ);
+    setInterval(() => { if (curQ) fetchData(); }, 60000);
     setInterval(() => { if (curQ) updateFlipTimer(); }, 1000);
+    setInterval(() => { fetchWeather(); }, 3600000); // Погода раз на годину
 }
 
 async function fetchData() {
@@ -35,24 +34,11 @@ async function fetchData() {
         const r = await fetch(`${API_URL}?t=${Date.now()}`);
         db = await r.json();
         document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
-        if (curQ) {
-            syncLogic();
-            parseAndPrepareSchedule();
-            render();
-        }
+        if (curQ) { syncLogic(); calculateTimerData(); render(); }
     } catch (e) { document.getElementById('status').innerText = "Помилка зв'язку"; }
 }
 
 async function fetchWeather() {
-    const cached = localStorage.getItem('weatherCache');
-    if (cached) {
-        const data = JSON.parse(cached);
-        if (Date.now() - data.timestamp < 3600000) {
-            weatherData = data;
-            if (curQ) render();
-            return;
-        }
-    }
     try {
         const r = await fetch(WEATHER_API);
         const data = await r.json();
@@ -61,7 +47,6 @@ async function fetchWeather() {
             today: { max: Math.round(data.daily.temperature_2m_max[0]), min: Math.round(data.daily.temperature_2m_min[0]), code: data.daily.weathercode[0] },
             tomorrow: { max: Math.round(data.daily.temperature_2m_max[1]), min: Math.round(data.daily.temperature_2m_min[1]), code: data.daily.weathercode[1] }
         };
-        localStorage.setItem('weatherCache', JSON.stringify(weatherData));
         if (curQ) render();
     } catch (e) { weatherData = null; }
 }
@@ -101,117 +86,107 @@ function syncLogic() {
     }
 }
 
-function parseSlotsForDay(pref) {
-    if (!db || !curQ) return { slots: [], message: null };
-    const qData = db[`${curQ}_cherg`];
-    const allPrefKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_')).sort();
-    if (allPrefKeys.length === 0) return { slots: [], message: `Графік на цей день очікується` };
-    const firstSlotValue = qData[allPrefKeys[0]];
-    if (firstSlotValue && !firstSlotValue.includes(':')) {
-        return { slots: [], message: firstSlotValue };
+function calculateTimerData() {
+    if (!db || !curQ) return;
+    const now = new Date();
+    const todayIdx = (now.getDay() + 6) % 7;
+    const allEvents = [];
+    for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
+        const targetIdx = (todayIdx + dayOffset) % 7;
+        const pref = P_LIST[dayPrefixMap[targetIdx]];
+        const qData = db[`${curQ}_cherg`];
+        const slots = Object.keys(qData).filter(k => k.startsWith(pref + '_')).map(k => {
+            const val = qData[k];
+            if (val.includes("Немає")) return null;
+            const [s, e] = val.split('-').map(t => {
+                const [h, m] = t.split(':').map(Number); return h * 60 + m;
+            });
+            return { start: s + dayOffset * 1440, end: (e === 0 ? 1440 : e) + dayOffset * 1440, type: 'off' };
+        }).filter(v => v !== null);
+        let last = dayOffset * 1440;
+        slots.sort((a,b) => a.start - b.start).forEach(s => {
+            if (s.start > last) allEvents.push({ start: last, end: s.start, type: 'on' });
+            allEvents.push(s); last = s.end;
+        });
+        if (last < (dayOffset + 1) * 1440) allEvents.push({ start: last, end: (dayOffset + 1) * 1440, type: 'on' });
     }
-    const slots = allPrefKeys.map(k => {
+    const nowTotal = now.getHours() * 60 + now.getMinutes();
+    const currentSlot = allEvents.find(ev => nowTotal >= ev.start && nowTotal < ev.end);
+    timerData = currentSlot ? { endTime: currentSlot.end * 60, type: currentSlot.type } : null;
+}
+
+function updateFlipTimer() {
+    const timerCont = document.getElementById('timer-container');
+    const now = new Date();
+    let h, m, s, label;
+
+    if (timerData) {
+        const nowInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+        let diff = timerData.endTime - nowInSeconds;
+        if (diff >= 0) {
+            h = Math.floor(diff / 3600); m = Math.floor((diff % 3600) / 60); s = diff % 60;
+            label = timerData.type === 'off' ? "До ввімкнення:" : "До відключення:";
+        } else { calculateTimerData(); return; }
+    } else {
+        h = now.getHours(); m = now.getMinutes(); s = now.getSeconds();
+        label = "Поточний час:";
+    }
+
+    timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label">${label}</div><div class="flip-clock">
+        <div class="flip-unit"><div class="flip-card">${h.toString().padStart(2, '0')}</div><div class="unit-desc">год</div></div>
+        <div class="flip-unit"><div class="flip-card">${m.toString().padStart(2, '0')}</div><div class="unit-desc">хв</div></div>
+        <div class="flip-unit"><div class="flip-card">${s.toString().padStart(2, '0')}</div><div class="unit-desc">сек</div></div>
+    </div></div>`;
+    timerCont.classList.remove('hidden');
+}
+
+function render() {
+    if (!db || !curQ) return;
+    const cont = document.getElementById('content');
+    const qData = db[`${curQ}_cherg`];
+    const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
+    document.getElementById('tabL').classList.toggle('active', currentIdx === 0);
+    document.getElementById('tabR').classList.toggle('active', currentIdx === 1);
+    if (weatherData) {
+        const tw = weatherData.today, tm = weatherData.tomorrow;
+        document.getElementById('weatherToday').innerHTML = `${getWeatherIcon(tw.code)} <span class="temp-range">${tw.max > 0 ? '+' : ''}${tw.max}° / ${tw.min > 0 ? '+' : ''}${tw.min}°</span>`;
+        document.getElementById('weatherTomorrow').innerHTML = `${getWeatherIcon(tm.code)} <span class="temp-range">${tm.max > 0 ? '+' : ''}${tm.max}° / ${tm.min > 0 ? '+' : ''}${tm.min}°</span>`;
+    }
+    const todayIdx = (now.getDay() + 6) % 7;
+    const targetDayIdx = currentIdx === 0 ? todayIdx : (todayIdx + 1) % 7;
+    const pref = P_LIST[dayPrefixMap[targetDayIdx]];
+    const slots = Object.keys(qData).filter(k => k.startsWith(pref + '_')).map(k => {
         const val = qData[k];
-        if (!val.includes(':')) return null;
+        if (val.includes("Немає")) return null;
         const [s, e] = val.split('-').map(t => {
             const [h, m] = t.split(':').map(Number); return h * 60 + m;
         });
         return { start: s, end: (e === 0 ? 1440 : e), type: 'off' };
     }).filter(v => v !== null).sort((a,b) => a.start - b.start);
+    if (slots.length === 0) { cont.innerHTML = `<div class="no-actual">Графік на ${currentIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`; return; }
     let full = []; let last = 0;
     slots.forEach(s => {
         if (s.start > last) full.push({ start: last, end: s.start, type: 'on' });
         full.push(s); last = s.end;
     });
     if (last < 1440) full.push({ start: last, end: 1440, type: 'on' });
-    return { slots: full, message: null };
-}
-
-function parseAndPrepareSchedule() {
-    const todayIdx = (new Date().getDay() + 6) % 7;
-    const tomorrowIdx = (todayIdx + 1) % 7;
-    const todayPref = P_LIST[dayPrefixMap[todayIdx]];
-    const tomorrowPref = P_LIST[dayPrefixMap[tomorrowIdx]];
-    let { slots: todaySlots, message: todayMessage } = parseSlotsForDay(todayPref);
-    let { slots: tomorrowSlots, message: tomorrowMessage } = parseSlotsForDay(tomorrowPref);
-    if (todaySlots.length > 0 && tomorrowSlots.length > 0) {
-        const lastToday = todaySlots[todaySlots.length - 1];
-        const firstTomorrow = tomorrowSlots[0];
-        if (lastToday.end === 1440 && firstTomorrow.start === 0 && lastToday.type === firstTomorrow.type) {
-            lastToday.end += firstTomorrow.end;
-        }
-    }
-    preparedSchedule.today = todaySlots;
-    preparedSchedule.todayMessage = todayMessage;
-    preparedSchedule.tomorrow = tomorrowSlots;
-    preparedSchedule.tomorrowMessage = tomorrowMessage;
-}
-
-function updateFlipTimer() {
-    if (!curQ) return;
-    const timerCont = document.getElementById('timer-container');
-    const now = new Date();
-    const nowM = now.getHours() * 60 + now.getMinutes();
-    const currentSlot = preparedSchedule.today.find(ev => nowM >= ev.start && nowM < ev.end);
-    if (currentSlot) {
-        let endOfDay = new Date();
-        if (currentSlot.end > 1440) {
-            endOfDay.setDate(endOfDay.getDate() + 1);
-        }
-        endOfDay.setHours(Math.floor(currentSlot.end / 60) % 24, currentSlot.end % 60, 0, 0);
-        const diff = Math.max(0, Math.round((endOfDay - now) / 1000));
-        const h = Math.floor(diff / 3600);
-        const m = Math.floor((diff % 3600) / 60);
-        const s = diff % 60;
-        const label = currentSlot.type === 'off' ? "До ввімкнення:" : "До відключення:";
-        timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label">${label}</div><div class="flip-clock"><div class="flip-unit"><div class="flip-card">${h.toString().padStart(2, '0')}</div><div class="unit-desc">год</div></div><div class="flip-unit"><div class="flip-card">${m.toString().padStart(2, '0')}</div><div class="unit-desc">хв</div></div><div class="flip-unit"><div class="flip-card">${s.toString().padStart(2, '0')}</div><div class="unit-desc">сек</div></div></div></div>`;
-        timerCont.classList.remove('hidden');
-    } else {
-        const h = now.getHours();
-        const m = now.getMinutes();
-        const s = now.getSeconds();
-        const label = "Поточний час:";
-        timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label">${label}</div><div class="flip-clock"><div class="flip-unit"><div class="flip-card">${h.toString().padStart(2, '0')}</div><div class="unit-desc">год</div></div><div class="flip-unit"><div class="flip-card">${m.toString().padStart(2, '0')}</div><div class="unit-desc">хв</div></div><div class="flip-unit"><div class="flip-card">${s.toString().padStart(2, '0')}</div><div class="unit-desc">сек</div></div></div></div>`;
-        timerCont.classList.remove('hidden');
-    }
-}
-
-function render() {
-    if (!db || !curQ) return;
-    document.getElementById('tabL').classList.toggle('active', currentIdx === 0);
-    document.getElementById('tabR').classList.toggle('active', currentIdx === 1);
-    if (weatherData) {
-        const todayW = weatherData.today;
-        const tomorrowW = weatherData.tomorrow;
-        document.getElementById('weatherToday').innerHTML = `${getWeatherIcon(todayW.code)} <span class="temp-range">${todayW.max > 0 ? '+' : ''}${todayW.max}° / ${todayW.min > 0 ? '+' : ''}${todayW.min}°</span>`;
-        document.getElementById('weatherTomorrow').innerHTML = `${getWeatherIcon(tomorrowW.code)} <span class="temp-range">${tomorrowW.max > 0 ? '+' : ''}${tomorrowW.max}° / ${tomorrowW.min > 0 ? '+' : ''}${tomorrowW.min}°</span>`;
-    }
-    const cont = document.getElementById('content');
-    const dataToShow = (currentIdx === 0) ? preparedSchedule.today : preparedSchedule.tomorrow;
-    const messageToShow = (currentIdx === 0) ? preparedSchedule.todayMessage : preparedSchedule.tomorrowMessage;
-    if (messageToShow) {
-        cont.innerHTML = `<div class="no-actual">${messageToShow}</div>`;
-        return;
-    }
-    if (dataToShow.length === 0) {
-        cont.innerHTML = `<div class="no-actual">Графік на ${currentIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
-        return;
-    }
-    const now = new Date();
-    const nowM = now.getHours() * 60 + now.getMinutes();
-    const display = dataToShow.filter(ev => currentIdx === 0 ? ev.end > nowM : true);
+    const display = full.filter(ev => currentIdx === 0 ? ev.end > nowM : true);
     cont.innerHTML = display.map(ev => {
         const isToday = currentIdx === 0;
         const s = `${Math.floor(ev.start/60).toString().padStart(2,'0')}:${(ev.start%60).toString().padStart(2,'0')}`;
-        let endHour = Math.floor(ev.end / 60);
-        const e = `${(endHour % 24).toString().padStart(2,'0')}:${(ev.end%60).toString().padStart(2,'0')}`;
+        const e = `${Math.floor(ev.end/60 % 24).toString().padStart(2,'0')}:${(ev.end%60).toString().padStart(2,'0')}`;
         const isCur = isToday && nowM >= ev.start && nowM < ev.end;
         const isLocked = isToday && (ev.start - nowM <= 60);
-        let dur = (ev.end - ev.start) / 60;
-        if (ev.end > 1440 && ev.start < 1440) {
-            dur = (1440 - ev.start) / 60;
-        }
-        return `<div class="slot ${ev.type} ${isCur ? 'current' : ''}"><div class="time-box"><span class="time">${s}-${e}</span></div><div class="slot-right"><span class="dur">${dur % 1 === 0 ? dur : dur.toFixed(1)} год/${ev.type==='off'?'викл':'вкл'}</span><div style="width:32px; display:flex; justify-content:center;">${isCur ? clockSVG : `<div class="calendar-btn ${isLocked ? 'disabled' : ''}" onclick="${isLocked ? '' : `addToCal('${s}-${e}', ${isToday}, '${ev.type}')`}">${calendarSVG}</div>`}</div></div></div>`;
+        const dur = (ev.end - ev.start) / 60;
+        return `<div class="slot ${ev.type} ${isCur ? 'current' : ''}">
+            <div class="time-box"><span class="time">${s}-${e}</span></div>
+            <div class="slot-right">
+                <span class="dur">${dur % 1 === 0 ? dur : dur.toFixed(1)} год/${ev.type==='off'?'викл':'вкл'}</span>
+                <div style="width:32px; display:flex; justify-content:center;">
+                    ${isCur ? clockSVG : `<div class="calendar-btn ${isLocked ? 'disabled' : ''}" onclick="${isLocked ? '' : `addToCal('${s}-${e}', ${isToday}, '${ev.type}')`}">${calendarSVG}</div>`}
+                </div>
+            </div>
+        </div>`;
     }).join('');
 }
 
@@ -225,19 +200,11 @@ function selectQ(q) {
     document.getElementById('grid').classList.add('hidden');
     document.getElementById('box').classList.remove('hidden');
     document.getElementById('title').innerText = `Черга ${q}`;
-    if(db) {
-        syncLogic();
-        parseAndPrepareSchedule();
-        render();
-    }
+    calculateTimerData(); render();
 }
 
 function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
-async function setTab(i) { 
-    currentIdx = i;
-    render(); 
-    await fetchData();
-}
+function setTab(i) { currentIdx = i; render(); }
 
 function addToCal(slot, isToday, type) {
     const [sT, eT] = slot.split('-');

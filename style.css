@@ -1,9 +1,9 @@
 :root {
-    --main: #1a1a1b;
+    --main: #333333;
     --line: #e0e0e0;
-    --active: #000000;
+    --active: #333333;
     --gray-bg: #ececec;
-    --flip-bg: #333;
+    --flip-bg: #333333;
     --flip-text: #fff;
 }
 
