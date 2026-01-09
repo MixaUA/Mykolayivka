@@ -14,17 +14,20 @@ const weatherIcons = {
     fog: `<svg viewBox="0 0 64 64"><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-2,-11)"/><g transform="translate(12, 45)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" x1="0" y1="0" x2="40" y2="0" stroke-dasharray="4,4"><animateTransform attributeName="transform" type="translate" values="0 0; 2 0; -2 0; 0 0" dur="3.5s" repeatCount="indefinite" additive="sum"/></line><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" x1="0" y1="8" x2="35" y2="8" stroke-dasharray="4,4"><animateTransform attributeName="transform" type="translate" values="0 0; -2 0; 2 0; 0 0" dur="4s" repeatCount="indefinite" additive="sum" begin="0.3s"/></line></g></svg>`
 };
 
-// Цикл: 0-Пн, 1-Вт, 2-Ср, 3-Чт, 4-Пт, 5-Сб, 6-Нд
 let dayPrefixMap = JSON.parse(localStorage.getItem('calibratedMap')) || [5, 6, 0, 1, 2, 3, 4];
 let db = null, curQ = localStorage.getItem('selectedQueue'), currentIdx = 0, weatherData = null;
+let preparedSchedule = { today: [], tomorrow: [], todayMessage: null, tomorrowMessage: null };
 
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
     await fetchData();
     await fetchWeather();
     renderGrid();
-    if (curQ) selectQ(curQ);
+    if (curQ) {
+        selectQ(curQ);
+    }
     setInterval(() => { if (curQ) fetchData(); }, 600000);
+    setInterval(() => { if (curQ) updateFlipTimer(); }, 1000);
 }
 
 async function fetchData() {
@@ -32,8 +35,11 @@ async function fetchData() {
         const r = await fetch(`${API_URL}?t=${Date.now()}`);
         db = await r.json();
         document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
-        if (curQ) syncLogic();
-        render();
+        if (curQ) {
+            syncLogic();
+            parseAndPrepareSchedule();
+            render();
+        }
     } catch (e) { document.getElementById('status').innerText = "Помилка зв'язку"; }
 }
 
@@ -43,52 +49,30 @@ async function fetchWeather() {
         const data = JSON.parse(cached);
         if (Date.now() - data.timestamp < 3600000) {
             weatherData = data;
+            if (curQ) render();
             return;
         }
     }
-    
     try {
         const r = await fetch(WEATHER_API);
         const data = await r.json();
         weatherData = {
             timestamp: Date.now(),
-            today: {
-                max: Math.round(data.daily.temperature_2m_max[0]),
-                min: Math.round(data.daily.temperature_2m_min[0]),
-                code: data.daily.weathercode[0]
-            },
-            tomorrow: {
-                max: Math.round(data.daily.temperature_2m_max[1]),
-                min: Math.round(data.daily.temperature_2m_min[1]),
-                code: data.daily.weathercode[1]
-            }
+            today: { max: Math.round(data.daily.temperature_2m_max[0]), min: Math.round(data.daily.temperature_2m_min[0]), code: data.daily.weathercode[0] },
+            tomorrow: { max: Math.round(data.daily.temperature_2m_max[1]), min: Math.round(data.daily.temperature_2m_min[1]), code: data.daily.weathercode[1] }
         };
         localStorage.setItem('weatherCache', JSON.stringify(weatherData));
-    } catch (e) {
-        weatherData = null;
-    }
+        if (curQ) render();
+    } catch (e) { weatherData = null; }
 }
 
 function getWeatherIcon(code) {
-    // Clear sky
     if (code === 0) return weatherIcons.sun;
-    
-    // Partly cloudy
     if ([1, 2, 3].includes(code)) return weatherIcons.cloudSun;
-    
-    // Fog
     if ([45, 48].includes(code)) return weatherIcons.fog;
-    
-    // Drizzle and Rain
     if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return weatherIcons.rain;
-    
-    // Snow
     if ([71, 73, 75, 77, 85, 86].includes(code)) return weatherIcons.snow;
-    
-    // Thunderstorm
     if ([95, 96, 99].includes(code)) return weatherIcons.thunder;
-    
-    // Default to cloudy
     return weatherIcons.cloud;
 }
 
@@ -99,18 +83,14 @@ function syncLogic() {
     const fileDate = new Date(y, m - 1, d); fileDate.setHours(0,0,0,0);
     const now = new Date(); now.setHours(0,0,0,0);
     const daysDiff = Math.round((now - fileDate) / 86400000);
-
-    // Механізм коригування активується ТІЛЬКИ якщо файл вчорашній
     if (daysDiff === 1) {
         const qData = db[`${curQ}_cherg`];
         const keys = Object.keys(qData);
         const available = [...new Set(keys.map(k => k.split('_')[0]))];
         available.sort((a,b) => P_LIST.indexOf(a) - P_LIST.indexOf(b));
-        
         const lastPref = available[available.length - 1];
         const lastIdxInFile = P_LIST.indexOf(lastPref);
         const todayIdx = (now.getDay() + 6) % 7; 
-
         if (dayPrefixMap[todayIdx] !== lastIdxInFile) {
             const offset = (lastIdxInFile - todayIdx + 7) % 7;
             for (let i = 0; i < 7; i++) dayPrefixMap[i] = (i + offset) % 7;
@@ -121,109 +101,117 @@ function syncLogic() {
     }
 }
 
-function render() {
-    if (!db || !curQ) return;
-    const cont = document.getElementById('content');
+function parseSlotsForDay(pref) {
+    if (!db || !curQ) return { slots: [], message: null };
     const qData = db[`${curQ}_cherg`];
-    const now = new Date();
-    const nowM = now.getHours() * 60 + now.getMinutes();
-    const todayIdx = (now.getDay() + 6) % 7;
-    
-    document.getElementById('tabL').classList.toggle('active', currentIdx === 0);
-    document.getElementById('tabR').classList.toggle('active', currentIdx === 1);
-
-    // Оновлення погоди у вкладках
-    if (weatherData) {
-        const todayW = weatherData.today;
-        const tomorrowW = weatherData.tomorrow;
-        document.getElementById('weatherToday').innerHTML = `
-            ${getWeatherIcon(todayW.code)}
-            <span class="temp-range">${todayW.max > 0 ? '+' : ''}${todayW.max}° / ${todayW.min > 0 ? '+' : ''}${todayW.min}°</span>
-        `;
-        document.getElementById('weatherTomorrow').innerHTML = `
-            ${getWeatherIcon(tomorrowW.code)}
-            <span class="temp-range">${tomorrowW.max > 0 ? '+' : ''}${tomorrowW.max}° / ${tomorrowW.min > 0 ? '+' : ''}${tomorrowW.min}°</span>
-        `;
-    }
-
-    // Перевірка застою для вкладки "Завтра"
-    const [dPart] = db.update_time.split(' ');
-    const [d, m, y] = dPart.split('.').map(Number);
-    const fileDate = new Date(y, m - 1, d); fileDate.setHours(0,0,0,0);
-    const nowDate = new Date(); nowDate.setHours(0,0,0,0);
-    const daysDiff = Math.round((nowDate - fileDate) / 86400000);
-
-    if (daysDiff > 1 && currentIdx === 1) {
-        cont.innerHTML = `<div class="no-actual">⚠️ Дані застарілі</div>`;
-        return;
-    }
-
-    const targetDayIdx = currentIdx === 0 ? todayIdx : (todayIdx + 1) % 7;
-    const pref = P_LIST[dayPrefixMap[targetDayIdx]];
-
-    // --- NEW LOGIC START ---
     const allPrefKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_')).sort();
-
-    if (allPrefKeys.length === 0) {
-        cont.innerHTML = `<div class="no-actual">Графік на ${currentIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
-        return;
-    }
-
+    if (allPrefKeys.length === 0) return { slots: [], message: `Графік на цей день очікується` };
     const firstSlotValue = qData[allPrefKeys[0]];
-    if (firstSlotValue && !firstSlotValue.includes(':')) { // Check if it's a message, not a time range
-        cont.innerHTML = `<div class="no-actual" style="margin-top: 50px; font-size: 1.2rem;">${firstSlotValue}</div>`;
-        return;
+    if (firstSlotValue && !firstSlotValue.includes(':')) {
+        return { slots: [], message: firstSlotValue };
     }
-    // --- NEW LOGIC END ---
-
     const slots = allPrefKeys.map(k => {
         const val = qData[k];
-        // Ensure only time-based values are processed
-        if (!val.includes(':')) return null; 
+        if (!val.includes(':')) return null;
         const [s, e] = val.split('-').map(t => {
             const [h, m] = t.split(':').map(Number); return h * 60 + m;
         });
         return { start: s, end: (e === 0 ? 1440 : e), type: 'off' };
     }).filter(v => v !== null).sort((a,b) => a.start - b.start);
-
-    if (slots.length === 0) {
-        cont.innerHTML = `<div class="no-actual">Графік на ${currentIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
-        return;
-    }
-
     let full = []; let last = 0;
     slots.forEach(s => {
         if (s.start > last) full.push({ start: last, end: s.start, type: 'on' });
         full.push(s); last = s.end;
     });
     if (last < 1440) full.push({ start: last, end: 1440, type: 'on' });
+    return { slots: full, message: null };
+}
 
-    const display = full.filter(ev => currentIdx === 0 ? ev.end > nowM : true);
+function parseAndPrepareSchedule() {
+    const todayIdx = (new Date().getDay() + 6) % 7;
+    const tomorrowIdx = (todayIdx + 1) % 7;
+    const todayPref = P_LIST[dayPrefixMap[todayIdx]];
+    const tomorrowPref = P_LIST[dayPrefixMap[tomorrowIdx]];
+    let { slots: todaySlots, message: todayMessage } = parseSlotsForDay(todayPref);
+    let { slots: tomorrowSlots, message: tomorrowMessage } = parseSlotsForDay(tomorrowPref);
+    if (todaySlots.length > 0 && tomorrowSlots.length > 0) {
+        const lastToday = todaySlots[todaySlots.length - 1];
+        const firstTomorrow = tomorrowSlots[0];
+        if (lastToday.end === 1440 && firstTomorrow.start === 0 && lastToday.type === firstTomorrow.type) {
+            lastToday.end += firstTomorrow.end;
+        }
+    }
+    preparedSchedule.today = todaySlots;
+    preparedSchedule.todayMessage = todayMessage;
+    preparedSchedule.tomorrow = tomorrowSlots;
+    preparedSchedule.tomorrowMessage = tomorrowMessage;
+}
 
+function updateFlipTimer() {
+    if (!curQ) return;
+    const timerCont = document.getElementById('timer-container');
+    const now = new Date();
+    const nowM = now.getHours() * 60 + now.getMinutes();
+    const currentSlot = preparedSchedule.today.find(ev => nowM >= ev.start && nowM < ev.end);
+    if (currentSlot) {
+        let endOfDay = new Date();
+        if (currentSlot.end > 1440) {
+            endOfDay.setDate(endOfDay.getDate() + 1);
+        }
+        endOfDay.setHours(Math.floor(currentSlot.end / 60) % 24, currentSlot.end % 60, 0, 0);
+        const diff = Math.max(0, Math.round((endOfDay - now) / 1000));
+        const h = Math.floor(diff / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        const label = currentSlot.type === 'off' ? "До ввімкнення:" : "До відключення:";
+        timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label">${label}</div><div class="flip-clock"><div class="flip-unit"><div class="flip-card">${h.toString().padStart(2, '0')}</div><div class="unit-desc">год</div></div><div class="flip-unit"><div class="flip-card">${m.toString().padStart(2, '0')}</div><div class="unit-desc">хв</div></div><div class="flip-unit"><div class="flip-card">${s.toString().padStart(2, '0')}</div><div class="unit-desc">сек</div></div></div></div>`;
+        timerCont.classList.remove('hidden');
+    } else {
+        const h = now.getHours();
+        const m = now.getMinutes();
+        const s = now.getSeconds();
+        const label = "Поточний час:";
+        timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label">${label}</div><div class="flip-clock"><div class="flip-unit"><div class="flip-card">${h.toString().padStart(2, '0')}</div><div class="unit-desc">год</div></div><div class="flip-unit"><div class="flip-card">${m.toString().padStart(2, '0')}</div><div class="unit-desc">хв</div></div><div class="flip-unit"><div class="flip-card">${s.toString().padStart(2, '0')}</div><div class="unit-desc">сек</div></div></div></div>`;
+        timerCont.classList.remove('hidden');
+    }
+}
+
+function render() {
+    if (!db || !curQ) return;
+    document.getElementById('tabL').classList.toggle('active', currentIdx === 0);
+    document.getElementById('tabR').classList.toggle('active', currentIdx === 1);
+    if (weatherData) {
+        const todayW = weatherData.today;
+        const tomorrowW = weatherData.tomorrow;
+        document.getElementById('weatherToday').innerHTML = `${getWeatherIcon(todayW.code)} <span class="temp-range">${todayW.max > 0 ? '+' : ''}${todayW.max}° / ${todayW.min > 0 ? '+' : ''}${todayW.min}°</span>`;
+        document.getElementById('weatherTomorrow').innerHTML = `${getWeatherIcon(tomorrowW.code)} <span class="temp-range">${tomorrowW.max > 0 ? '+' : ''}${tomorrowW.max}° / ${tomorrowW.min > 0 ? '+' : ''}${tomorrowW.min}°</span>`;
+    }
+    const cont = document.getElementById('content');
+    const dataToShow = (currentIdx === 0) ? preparedSchedule.today : preparedSchedule.tomorrow;
+    const messageToShow = (currentIdx === 0) ? preparedSchedule.todayMessage : preparedSchedule.tomorrowMessage;
+    if (messageToShow) {
+        cont.innerHTML = `<div class="no-actual">${messageToShow}</div>`;
+        return;
+    }
+    if (dataToShow.length === 0) {
+        cont.innerHTML = `<div class="no-actual">Графік на ${currentIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
+        return;
+    }
+    const now = new Date();
+    const nowM = now.getHours() * 60 + now.getMinutes();
+    const display = dataToShow.filter(ev => currentIdx === 0 ? ev.end > nowM : true);
     cont.innerHTML = display.map(ev => {
         const isToday = currentIdx === 0;
         const s = `${Math.floor(ev.start/60).toString().padStart(2,'0')}:${(ev.start%60).toString().padStart(2,'0')}`;
-        const e = `${Math.floor(ev.end/60 % 24).toString().padStart(2,'0')}:${(ev.end%60).toString().padStart(2,'0')}`;
+        let endHour = Math.floor(ev.end / 60);
+        const e = `${(endHour % 24).toString().padStart(2,'0')}:${(ev.end%60).toString().padStart(2,'0')}`;
         const isCur = isToday && nowM >= ev.start && nowM < ev.end;
-        
-        // ЗАХИСНИЙ МЕХАНІЗМ: за 60 хв до початку кнопка блокується
         const isLocked = isToday && (ev.start - nowM <= 60);
-        
-        const dur = (ev.end - ev.start) / 60;
-        return `
-            <div class="slot ${ev.type} ${isCur ? 'current' : ''}">
-                <div class="time-box"><span class="time">${s}-${e}</span></div>
-                <div class="slot-right">
-                    <span class="dur">${dur % 1 === 0 ? dur : dur.toFixed(1)} год/${ev.type==='off'?'викл':'вкл'}</span>
-                    <div style="width:32px; display:flex; justify-content:center;">
-                        ${isCur ? clockSVG : `
-                            <div class="calendar-btn ${isLocked ? 'disabled' : ''}" 
-                                 onclick="${isLocked ? '' : `addToCal('${s}-${e}', ${isToday}, '${ev.type}')`}">
-                                ${calendarSVG}
-                            </div>`}
-                    </div>
-                </div>
-            </div>`;
+        let dur = (ev.end - ev.start) / 60;
+        if (ev.end > 1440 && ev.start < 1440) {
+            dur = (1440 - ev.start) / 60;
+        }
+        return `<div class="slot ${ev.type} ${isCur ? 'current' : ''}"><div class="time-box"><span class="time">${s}-${e}</span></div><div class="slot-right"><span class="dur">${dur % 1 === 0 ? dur : dur.toFixed(1)} год/${ev.type==='off'?'викл':'вкл'}</span><div style="width:32px; display:flex; justify-content:center;">${isCur ? clockSVG : `<div class="calendar-btn ${isLocked ? 'disabled' : ''}" onclick="${isLocked ? '' : `addToCal('${s}-${e}', ${isToday}, '${ev.type}')`}">${calendarSVG}</div>`}</div></div></div>`;
     }).join('');
 }
 
@@ -237,18 +225,30 @@ function selectQ(q) {
     document.getElementById('grid').classList.add('hidden');
     document.getElementById('box').classList.remove('hidden');
     document.getElementById('title').innerText = `Черга ${q}`;
-    syncLogic(); render();
+    if(db) {
+        syncLogic();
+        parseAndPrepareSchedule();
+        render();
+    }
 }
 
 function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
-function setTab(i) { currentIdx = i; render(); }
+async function setTab(i) { 
+    currentIdx = i;
+    render(); 
+    await fetchData();
+}
 
 function addToCal(slot, isToday, type) {
     const [sT, eT] = slot.split('-');
-    const d = new Date(); if (!isToday) d.setDate(d.getDate() + 1);
+    const d = new Date();
+    if (!isToday) {
+        d.setDate(d.getDate() + 1);
+    }
     const iso = (t) => {
         const [h, m] = t.split(':').map(Number);
-        const date = new Date(d); date.setHours(h, m, 0, 0);
+        const date = new Date(d);
+        date.setHours(h, m, 0, 0);
         return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
     };
     const title = `Черга ${curQ} ${(type === 'off' ? "Відключення" : "Включення")} з ${sT} год по ${eT} год`;

@@ -3,6 +3,8 @@
     --line: #e0e0e0;
     --active: #000000;
     --gray-bg: #ececec;
+    --flip-bg: #333;
+    --flip-text: #fff;
 }
 
 body {
@@ -464,4 +466,60 @@ h1 {
 
 .am-weather-easing-ease-in-out {
     animation-timing-function: ease-in-out;
+}
+
+/* Flip Timer Styles */
+.timer-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.timer-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    color: #777;
+    font-weight: bold;
+}
+
+.flip-clock {
+    display: flex;
+    gap: 8px;
+}
+
+.flip-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.flip-card {
+    background: var(--flip-bg);
+    color: var(--flip-text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 1.8rem;
+    font-weight: 800;
+    min-width: 45px;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.flip-card::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background: rgba(0,0,0,0.2);
+}
+
+.unit-desc {
+    font-size: 0.65rem;
+    margin-top: 4px;
+    opacity: 0.6;
 }
