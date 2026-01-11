@@ -34,16 +34,24 @@
     <div id="grid" class="queue-grid"></div>
     <div id="box" class="hidden">
         <div class="tabs">
-            <div id="tabL" class="tab active" onclick="setTab(0)">
+            <button id="tabL" class="tab active" onclick="setDay(0)">
                 Сьогодні
                 <div class="weather-mini" id="weatherToday"></div>
-            </div>
-            <div id="tabR" class="tab" onclick="setTab(1)">
+            </button>
+            <button id="tabR" class="tab" onclick="setDay(1)">
                 Завтра
                 <div class="weather-mini" id="weatherTomorrow"></div>
-            </div>
+            </button>
         </div>
-        <div id="content"></div>
+        <div id="content-list"></div>
+        <div id="content-visual" class="hidden">
+            <div class="hours-grid" id="hours-grid"></div>
+        </div>
+
+        <div class="tabs" style="margin-top: 20px;">
+            <button id="view1" class="tab active" onclick="setView(1)">Список</button>
+            <button id="view2" class="tab" onclick="setView(2)">Сітка</button>
+        </div>
         <button class="btn-change" onclick="resetView()">Змінити чергу</button>
         <div class="separator"></div>
         <div class="wiki-box">
