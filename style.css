@@ -5,6 +5,7 @@
     --gray-bg: #ececec;
     --flip-bg: #333333;
     --flip-text: #fff;
+    --dark-coal: #2c2c2c;
 }
 
 body {
@@ -217,6 +218,7 @@ h1 {
     opacity: 0.5;
     font-style: italic;
     font-size: 1.1rem;
+    text-align: center;
 }
 
 .hidden {
@@ -593,3 +595,105 @@ h1 {
 @keyframes move3 { 13.63% { opacity: 1; transform: translateX(0); } 18.18% { transform: translateX(14px); } 22.72% { transform: translateX(28px); } 100% { opacity: 1; transform: translateX(28px); } }
 @keyframes move4 { 18.18% { opacity: 1; transform: translateX(0); } 22.72% { transform: translateX(14px); } 100% { opacity: 1; transform: translateX(14px); } }
 @keyframes move5 { 22.72% { opacity: 1; transform: translateX(0); } 100% { opacity: 1; transform: translateX(0); } }
+
+/* Grid view styles */
+.hours-grid { 
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 8px; 
+    margin: 10px 0 25px 0; 
+}
+.hours-grid > .no-actual { 
+    grid-column: 1 / -1; 
+}
+.hour-cell { 
+    padding: 12px 2px; 
+    border-radius: 8px; 
+    border: 2px solid var(--line); 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    position: relative; 
+}
+.hour-cell.off { 
+    background: var(--dark-coal); 
+    color: white; 
+    border-color: #1a1a1a; 
+}
+.hour-cell.current { 
+    border-color: #4CAF50; 
+    border-width: 3px; 
+    transform: scale(1.03); 
+    z-index: 1; 
+}
+.hour-time { 
+    font-size: 0.75rem; 
+    font-weight: 600; 
+    line-height: 1.2; 
+    margin-bottom: 4px; 
+}
+.current-dot { 
+    width: 6px; 
+    height: 6px; 
+    background: #4CAF50; 
+    border-radius: 50%; 
+    position: absolute; 
+    top: 4px; 
+    right: 4px; 
+    animation: pulse-dot 2s infinite; 
+}
+@keyframes pulse-dot { 
+    0%, 100% { opacity: 1; } 
+    50% { opacity: 0.3; } 
+}
+.icon-pwr { 
+    width: 18px; 
+    height: 18px; 
+}
+
+/* Modal styles */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center;
+    z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s; backdrop-filter: blur(4px);
+}
+.modal-overlay.active { opacity: 1; visibility: visible; }
+
+.modal-content {
+    background: #fff; 
+    padding: 24px; 
+    border-radius: 10px;
+    max-width: 320px; 
+    width: 85%;
+    text-align: center; 
+    transform: scale(0.9); 
+    transition: 0.3s;
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+.modal-overlay.active .modal-content { transform: scale(1); }
+
+.modal-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+
+.btn-modal { 
+    padding: 15px;
+    border-radius: 10px;
+    font-weight: 700; 
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-go { 
+    background: var(--main); 
+    color: #fff;
+    border: none;
+}
+
+.btn-exit { 
+    background: #fff; 
+    color: var(--main);
+    border: 2px solid var(--main);
+}
+
+/* Calendar button state */
+.no-anim { animation: none !important; opacity: 0.7; }

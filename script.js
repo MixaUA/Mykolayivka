@@ -3,6 +3,8 @@ const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=50.2699&lon
 const P_LIST = ["one", "two", "three", "four", "five", "six", "seven"];
 const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>`;
 const clockSVG = `<svg class="loader-clock" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite"/></path></svg>`;
+const powerOffSVG = `<svg class="icon-pwr" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2.5"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/></svg>`;
+const powerOnSVG = `<svg class="icon-pwr" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2.5"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/></svg>`;
 
 const weatherIcons = {
     sun: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="day"><g transform="translate(32,32)"><g class="am-weather-sun am-weather-sun-shiny am-weather-easing-ease-in-out"><g><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(45)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(90)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(135)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(180)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(225)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(270)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(315)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g></g><circle cx="0" cy="0" fill="white" r="7" stroke="black" stroke-width="1.5"/></g></g></svg>`,
@@ -15,8 +17,9 @@ const weatherIcons = {
 };
 
 let dayPrefixMap = JSON.parse(localStorage.getItem('calibratedMap')) || [5, 6, 0, 1, 2, 3, 4];
-let db = null, curQ = localStorage.getItem('selectedQueue'), currentIdx = 0, weatherData = null;
+let db = null, curQ = localStorage.getItem('selectedQueue'), dayIdx = 0, viewMode = 1, weatherData = null;
 let timerData = null;
+let clickedSlots = JSON.parse(localStorage.getItem('clickedSlots')) || {};
 
 function fmtTemp(t) {
     return t > 0 ? `+${t}°` : `${t}°`;
@@ -110,14 +113,19 @@ function calculateTimerData() {
         const targetIdx = (todayIdx + dayOffset) % 7;
         const pref = P_LIST[dayPrefixMap[targetIdx]];
         const qData = db[`${curQ}_cherg`];
-        const slots = Object.keys(qData).filter(k => k.startsWith(pref + '_')).map(k => {
+        const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
+        if (dayKeys.length === 0) continue;
+        const firstValue = qData[dayKeys[0]];
+        if (!/\d/.test(firstValue) || !firstValue.includes('-')) continue;
+
+        const slots = dayKeys.map(k => {
             const val = qData[k];
-            if (val.includes("Немає")) return null;
             const [s, e] = val.split('-').map(t => {
                 const [h, m] = t.split(':').map(Number); return h * 60 + m;
             });
             return { start: s + dayOffset * 1440, end: (e === 0 ? 1440 : e) + dayOffset * 1440, type: 'off' };
-        }).filter(v => v !== null);
+        });
+        
         let last = dayOffset * 1440;
         slots.sort((a,b) => a.start - b.start).forEach(s => {
             if (s.start > last) allEvents.push({ start: last, end: s.start, type: 'on' });
@@ -183,11 +191,8 @@ function updateFlipTimer() {
 
 function render() {
     if (!db || !curQ) return;
-    const cont = document.getElementById('content');
     const qData = db[`${curQ}_cherg`];
     const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
-    document.getElementById('tabL').classList.toggle('active', currentIdx === 0);
-    document.getElementById('tabR').classList.toggle('active', currentIdx === 1);
     
     const elToday = document.getElementById('weatherToday');
     const elTomorrow = document.getElementById('weatherTomorrow');
@@ -199,43 +204,107 @@ function render() {
         elToday.innerHTML = "—"; elTomorrow.innerHTML = "—";
     }
 
-    const todayIdx = (now.getDay() + 6) % 7;
-    const targetDayIdx = currentIdx === 0 ? todayIdx : (todayIdx + 1) % 7;
-    const pref = P_LIST[dayPrefixMap[targetDayIdx]];
-    const slots = Object.keys(qData).filter(k => k.startsWith(pref + '_')).map(k => {
+    const tDayIdx = ((now.getDay() + 6) % 7 + dayIdx) % 7;
+    const pref = P_LIST[dayPrefixMap[tDayIdx]];
+    const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
+
+    let messageToDisplay = null;
+
+    if (dayKeys.length === 0) {
+        messageToDisplay = `<div class="no-actual">Графік на ${dayIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
+    } else {
+        const firstValue = qData[dayKeys[0]];
+        const isSchedule = /\d/.test(firstValue) && firstValue.includes('-');
+
+        if (!isSchedule) {
+            messageToDisplay = `<div class="no-actual">${firstValue}</div>`;
+        }
+    }
+
+    const contentList = document.getElementById('content-list');
+    const contentVisual = document.getElementById('content-visual');
+
+    if (messageToDisplay) {
+        if(contentList) contentList.innerHTML = messageToDisplay;
+        if(contentVisual) document.getElementById('hours-grid').innerHTML = messageToDisplay;
+        if(contentList) contentList.classList.toggle('hidden', viewMode !== 1);
+        if(contentVisual) contentVisual.classList.toggle('hidden', viewMode !== 2);
+        return;
+    }
+
+    const slots = dayKeys.map(k => {
         const val = qData[k];
-        if (val.includes("Немає")) return null;
         const [s, e] = val.split('-').map(t => {
             const [h, m] = t.split(':').map(Number); return h * 60 + m;
         });
-        return { start: s, end: (e === 0 ? 1440 : e), type: 'off' };
-    }).filter(v => v !== null).sort((a,b) => a.start - b.start);
-    if (slots.length === 0) { cont.innerHTML = `<div class="no-actual">Графік на ${currentIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`; return; }
+        return { start: s, end: (e === 0 ? 1440 : e), type: 'off', raw: val };
+    }).sort((a,b) => a.start - b.start);
+
     let full = []; let last = 0;
     slots.forEach(s => {
-        if (s.start > last) full.push({ start: last, end: s.start, type: 'on' });
+        if (s.start > last) full.push({ start: last, end: s.start, type: 'on', raw: `${minToTime(last)}-${minToTime(s.start)}` });
         full.push(s); last = s.end;
     });
-    if (last < 1440) full.push({ start: last, end: 1440, type: 'on' });
-    const display = full.filter(ev => currentIdx === 0 ? ev.end > nowM : true);
+    if (last < 1440) full.push({ start: last, end: 1440, type: 'on', raw: `${minToTime(last)}-${minToTime(1440)}` });
+
+    renderList(full, nowM);
+    renderVisual(slots, nowM);
+}
+
+function renderList(full, nowM) {
+    const cont = document.getElementById('content-list');
+    if (!cont) return;
+    cont.classList.toggle('hidden', viewMode !== 1);
+    const display = full.filter(ev => dayIdx === 0 ? ev.end > nowM : true);
+    
+    const d = new Date(); if (dayIdx === 1) d.setDate(d.getDate() + 1);
+    const dateStr = d.toISOString().split('T')[0];
+
     cont.innerHTML = display.map(ev => {
-        const isToday = currentIdx === 0;
-        const s = `${Math.floor(ev.start/60).toString().padStart(2,'0')}:${(ev.start%60).toString().padStart(2,'0')}`;
-        const e = `${Math.floor(ev.end/60 % 24).toString().padStart(2,'0')}:${(ev.end%60).toString().padStart(2,'0')}`;
-        const isCur = isToday && nowM >= ev.start && nowM < ev.end;
-        const isLocked = isToday && (ev.start - nowM <= 60);
+        const s = minToTime(ev.start), e = minToTime(ev.end);
         const dur = (ev.end - ev.start) / 60;
+        const isCur = dayIdx === 0 && nowM >= ev.start && nowM < ev.end;
+        const isLocked = dayIdx === 0 && (ev.start - nowM <= 60);
+
+        const slotKey = `${dateStr}-${curQ}-${ev.raw || (s+e)}`;
+        const slotId = btoa(unescape(encodeURIComponent(slotKey))).replace(/=/g, '');
+        const hasBeenClicked = clickedSlots.hasOwnProperty(slotId);
+
         return `<div class="slot ${ev.type} ${isCur ? 'current' : ''}">
             <div class="time-box"><span class="time">${s}-${e}</span></div>
             <div class="slot-right">
                 <span class="dur">${dur % 1 === 0 ? dur : dur.toFixed(1)} год/${ev.type==='off'?'викл':'вкл'}</span>
                 <div style="width:32px; display:flex; justify-content:center;">
-                    ${isCur ? clockSVG : `<div class="calendar-btn ${isLocked ? 'disabled' : ''}" onclick="${isLocked ? '' : `addToCal('${s}-${e}', ${isToday}, '${ev.type}')`}">${calendarSVG}</div>`}
+                    ${isCur ? clockSVG : `<div class="calendar-btn ${isLocked ? 'disabled' : ''} ${hasBeenClicked ? 'no-anim' : ''}" 
+                        onclick="${isLocked ? '' : `handleCalendarClick('${s}-${e}', ${dayIdx===0}, '${ev.type}', '${slotId}')`}">
+                        ${calendarSVG}
+                    </div>`}
                 </div>
             </div>
         </div>`;
-    }).join('');
+    }).join('') || `<div class="no-actual">На сьогодні все</div>`;
 }
+
+function renderVisual(slots, nowM) {
+    const cont = document.getElementById('content-visual');
+    cont.classList.toggle('hidden', viewMode !== 2);
+    const grid = document.getElementById('hours-grid');
+    let html = '';
+    for (let h = 0; h < 24; h++) {
+        const hS = h * 60, hE = (h + 1) * 60;
+        let type = 'on';
+        for (const s of slots) { if (s.start <= hS && s.end > hS) { type = 'off'; break; } }
+        const isCur = dayIdx === 0 && nowM >= hS && nowM < hE;
+        html += `<div class="hour-cell ${type} ${isCur ? 'current' : ''}">
+            ${isCur ? '<div class="current-dot"></div>' : ''}
+            <div class="hour-time">${h.toString().padStart(2,'0')}:00<br>${((h+1)%24).toString().padStart(2,'0')}:00</div>
+            ${type === 'off' ? powerOffSVG : powerOnSVG}
+        </div>`;
+    }
+    grid.innerHTML = html;
+}
+
+function minToTime(m) { return `${Math.floor(m/60 % 24).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`; }
 
 function renderGrid() {
     const qs = ["1.1","1.2","2.1","2.2","3.1","3.2","4.1","4.2","5.1","5.2","6.1","6.2"];
@@ -251,16 +320,76 @@ function selectQ(q) {
 }
 
 function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
-function setTab(i) { currentIdx = i; render(); }
 
-function addToCal(slot, isToday, type) {
+function setDay(i) {
+    dayIdx = i;
+    document.getElementById('tabL').classList.toggle('active', i === 0);
+    document.getElementById('tabR').classList.toggle('active', i === 1);
+    render();
+}
+
+function setView(v) {
+    viewMode = v;
+    document.getElementById('view1').classList.toggle('active', v === 1);
+    document.getElementById('view2').classList.toggle('active', v === 2);
+    render();
+}
+
+function cleanOldClicks() {
+    const now = Date.now();
+    let isChanged = false;
+    for (const key in clickedSlots) {
+        if (now - clickedSlots[key] > 172800000) { delete clickedSlots[key]; isChanged = true; }
+    }
+    if (isChanged) localStorage.setItem('clickedSlots', JSON.stringify(clickedSlots));
+}
+
+function showCustomAlert(onConfirm) {
+    let overlay = document.getElementById('modalOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'modalOverlay';
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-content">
+                <div style="font-size:40px; margin-bottom:10px;">📅</div>
+                <h3 style="margin:0 0 10px; color:#222;">Вже у календарі?</h3>
+                <p style="margin:0; color:#666; font-size:14px;">Ви вже додавали цей слот. Бажаєте перейти до календаря ще раз?</p>
+                <div class="modal-btns">
+                    <button class="btn-modal btn-go" id="modalGo">Перейти в календар</button>
+                    <button class="btn-modal btn-exit" id="modalExit">Вийти</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+    }
+    overlay.classList.add('active');
+    document.getElementById('modalGo').onclick = () => { onConfirm(); overlay.classList.remove('active'); };
+    document.getElementById('modalExit').onclick = () => overlay.classList.remove('active');
+}
+
+function handleCalendarClick(slot, isToday, type, slotId) {
+    const openAction = () => {
+        openGoogleCalendar(slot, isToday, type);
+        clickedSlots[slotId] = Date.now();
+        localStorage.setItem('clickedSlots', JSON.stringify(clickedSlots));
+        render();
+    };
+
+    if (clickedSlots.hasOwnProperty(slotId)) {
+        showCustomAlert(openAction);
+    } else {
+        openAction();
+    }
+}
+
+function openGoogleCalendar(slot, isToday, type) {
     const [sT, eT] = slot.split('-');
     const d = new Date(); if (!isToday) d.setDate(d.getDate() + 1);
     const iso = (t) => {
         const [h, m] = t.split(':').map(Number); const date = new Date(d);
         date.setHours(h, m, 0, 0); return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
     };
-    const title = `Черга ${curQ} ${(type === 'off' ? "Відключення" : "Включення")} з ${sT} год по ${eT} год`;
+    const title = `Черга ${curQ}: ${type==='off'?'Відключення':'Включення'} (${sT}-${eT})`;
     window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${iso(sT)}/${iso(eT)}&sf=true&output=xml`, '_blank');
 }
 
@@ -293,5 +422,6 @@ function showUpdateBar(worker) {
     });
 }
 
+cleanOldClicks();
 init();
 registerSW();
