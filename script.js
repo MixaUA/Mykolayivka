@@ -18,16 +18,20 @@ let dayPrefixMap = JSON.parse(localStorage.getItem('calibratedMap')) || [5, 6, 0
 let db = null, curQ = localStorage.getItem('selectedQueue'), currentIdx = 0, weatherData = null;
 let timerData = null;
 
+function fmtTemp(t) {
+    return t > 0 ? `+${t}°` : `${t}°`;
+}
+
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
-    updateFlipTimer(); // Початковий виклик для негайного відображення
+    updateFlipTimer(); 
     await fetchData();
     await fetchWeather();
     renderGrid();
     if (curQ) selectQ(curQ);
     setInterval(() => { if (curQ) fetchData(); }, 60000);
-    setInterval(updateFlipTimer, 1000); // Завжди оновлювати таймер
-    setInterval(() => { fetchWeather(); }, 3600000); // Погода раз на годину
+    setInterval(updateFlipTimer, 1000); 
+    setInterval(() => { fetchWeather(); }, 3600000); 
 }
 
 async function fetchData() {
@@ -42,23 +46,33 @@ async function fetchData() {
 async function fetchWeather() {
     try {
         const r = await fetch(WEATHER_API);
+        if (!r.ok) throw new Error("API Offline");
         const data = await r.json();
+        if (!data.daily || !data.daily.weathercode) return;
         weatherData = {
             timestamp: Date.now(),
             today: { max: Math.round(data.daily.temperature_2m_max[0]), min: Math.round(data.daily.temperature_2m_min[0]), code: data.daily.weathercode[0] },
             tomorrow: { max: Math.round(data.daily.temperature_2m_max[1]), min: Math.round(data.daily.temperature_2m_min[1]), code: data.daily.weathercode[1] }
         };
+        localStorage.setItem('weatherCache', JSON.stringify(weatherData));
         if (curQ) render();
-    } catch (e) { weatherData = null; }
+    } catch (e) { 
+        const cached = localStorage.getItem('weatherCache');
+        if (cached) {
+            weatherData = JSON.parse(cached);
+            if (curQ) render();
+        } else { weatherData = null; }
+    }
 }
 
 function getWeatherIcon(code) {
     if (code === 0) return weatherIcons.sun;
-    if ([1, 2, 3].includes(code)) return weatherIcons.cloudSun;
-    if ([45, 48].includes(code)) return weatherIcons.fog;
-    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return weatherIcons.rain;
-    if ([71, 73, 75, 77, 85, 86].includes(code)) return weatherIcons.snow;
-    if ([95, 96, 99].includes(code)) return weatherIcons.thunder;
+    if (code === 1 || code === 2) return weatherIcons.cloudSun;
+    if (code === 3) return weatherIcons.cloud;
+    if (code === 45 || code === 48) return weatherIcons.fog;
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return weatherIcons.rain;
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return weatherIcons.snow;
+    if (code >= 95) return weatherIcons.thunder;
     return weatherIcons.cloud;
 }
 
@@ -137,10 +151,8 @@ function setDigit(id, value) {
 function updateFlipTimer() {
     const timerCont = document.getElementById('timer-container');
     if (!timerCont) return;
-
     const now = new Date();
     let h, m, s, label;
-
     if (curQ && timerData) {
         const nowInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
         let diff = timerData.endTime - nowInSeconds;
@@ -149,53 +161,22 @@ function updateFlipTimer() {
             m = Math.floor((diff % 3600) / 60);
             s = diff % 60;
             label = timerData.type === 'off' ? "До ввімкнення:" : "До відключення:";
-        } else {
-            calculateTimerData();
-            return;
-        }
+        } else { calculateTimerData(); return; }
     } else {
-        h = now.getHours();
-        m = now.getMinutes();
-        s = now.getSeconds();
+        h = now.getHours(); m = now.getMinutes(); s = now.getSeconds();
         label = "Поточний час:";
     }
-
     if (!timerCont.querySelector('.flip-clock')) {
         timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label"></div><div class="flip-clock">
-            <div class="flip-unit">
-                <div class="flip-pair">
-                    <div class="roll-digit-container"><div id="h1" class="roll-digit-strip"></div></div>
-                    <div class="roll-digit-container"><div id="h2" class="roll-digit-strip"></div></div>
-                </div>
-                <div class="unit-desc">год</div>
-            </div>
-            <div class="flip-unit">
-                <div class="flip-pair">
-                    <div class="roll-digit-container"><div id="m1" class="roll-digit-strip"></div></div>
-                    <div class="roll-digit-container"><div id="m2" class="roll-digit-strip"></div></div>
-                </div>
-                <div class="unit-desc">хв</div>
-            </div>
-            <div class="flip-unit">
-                <div class="flip-pair">
-                    <div class="roll-digit-container"><div id="s1" class="roll-digit-strip"></div></div>
-                    <div class="roll-digit-container"><div id="s2" class="roll-digit-strip"></div></div>
-                </div>
-                <div class="unit-desc">сек</div>
-            </div>
+            <div class="flip-unit"><div class="flip-pair"><div class="roll-digit-container"><div id="h1" class="roll-digit-strip"></div></div><div class="roll-digit-container"><div id="h2" class="roll-digit-strip"></div></div></div><div class="unit-desc">год</div></div>
+            <div class="flip-unit"><div class="flip-pair"><div class="roll-digit-container"><div id="m1" class="roll-digit-strip"></div></div><div class="roll-digit-container"><div id="m2" class="roll-digit-strip"></div></div></div><div class="unit-desc">хв</div></div>
+            <div class="flip-unit"><div class="flip-pair"><div class="roll-digit-container"><div id="s1" class="roll-digit-strip"></div></div><div class="roll-digit-container"><div id="s2" class="roll-digit-strip"></div></div></div><div class="unit-desc">сек</div></div>
         </div></div>`;
-        initDigitStrip('h1'); initDigitStrip('h2');
-        initDigitStrip('m1'); initDigitStrip('m2');
-        initDigitStrip('s1'); initDigitStrip('s2');
+        initDigitStrip('h1'); initDigitStrip('h2'); initDigitStrip('m1'); initDigitStrip('m2'); initDigitStrip('s1'); initDigitStrip('s2');
     }
-
-    setDigit('h1', Math.floor(h / 10));
-    setDigit('h2', h % 10);
-    setDigit('m1', Math.floor(m / 10));
-    setDigit('m2', m % 10);
-    setDigit('s1', Math.floor(s / 10));
-    setDigit('s2', s % 10);
-    
+    setDigit('h1', Math.floor(h / 10)); setDigit('h2', h % 10);
+    setDigit('m1', Math.floor(m / 10)); setDigit('m2', m % 10);
+    setDigit('s1', Math.floor(s / 10)); setDigit('s2', s % 10);
     const timerLabel = timerCont.querySelector('.timer-label');
     if (timerLabel) timerLabel.textContent = label;
 }
@@ -207,11 +188,17 @@ function render() {
     const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
     document.getElementById('tabL').classList.toggle('active', currentIdx === 0);
     document.getElementById('tabR').classList.toggle('active', currentIdx === 1);
-    if (weatherData) {
+    
+    const elToday = document.getElementById('weatherToday');
+    const elTomorrow = document.getElementById('weatherTomorrow');
+    if (weatherData && elToday && elTomorrow) {
         const tw = weatherData.today, tm = weatherData.tomorrow;
-        document.getElementById('weatherToday').innerHTML = `${getWeatherIcon(tw.code)} <span class="temp-range">${tw.max > 0 ? '+' : ''}${tw.max}° / ${tw.min > 0 ? '+' : ''}${tw.min}°</span>`;
-        document.getElementById('weatherTomorrow').innerHTML = `${getWeatherIcon(tm.code)} <span class="temp-range">${tm.max > 0 ? '+' : ''}${tm.max}° / ${tm.min > 0 ? '+' : ''}${tm.min}°</span>`;
+        elToday.innerHTML = `${getWeatherIcon(tw.code)} <span class="temp-range">${fmtTemp(tw.max)} / ${fmtTemp(tw.min)}</span>`;
+        elTomorrow.innerHTML = `${getWeatherIcon(tm.code)} <span class="temp-range">${fmtTemp(tm.max)} / ${fmtTemp(tm.min)}</span>`;
+    } else if (elToday && elTomorrow) {
+        elToday.innerHTML = "—"; elTomorrow.innerHTML = "—";
     }
+
     const todayIdx = (now.getDay() + 6) % 7;
     const targetDayIdx = currentIdx === 0 ? todayIdx : (todayIdx + 1) % 7;
     const pref = P_LIST[dayPrefixMap[targetDayIdx]];
@@ -268,68 +255,39 @@ function setTab(i) { currentIdx = i; render(); }
 
 function addToCal(slot, isToday, type) {
     const [sT, eT] = slot.split('-');
-    const d = new Date();
-    if (!isToday) {
-        d.setDate(d.getDate() + 1);
-    }
+    const d = new Date(); if (!isToday) d.setDate(d.getDate() + 1);
     const iso = (t) => {
-        const [h, m] = t.split(':').map(Number);
-        const date = new Date(d);
-        date.setHours(h, m, 0, 0);
-        return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+        const [h, m] = t.split(':').map(Number); const date = new Date(d);
+        date.setHours(h, m, 0, 0); return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
     };
     const title = `Черга ${curQ} ${(type === 'off' ? "Відключення" : "Включення")} з ${sT} год по ${eT} год`;
     window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${iso(sT)}/${iso(eT)}&sf=true&output=xml`, '_blank');
 }
 
 function registerSW() {
-    if (!('serviceWorker' in navigator)) {
-        console.log('Service Worker not supported');
-        return;
-    }
-    
+    if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
         .then(registration => {
-            console.log('ServiceWorker registration successful');
-
             registration.addEventListener('updatefound', () => {
                 const newWorker = registration.installing;
                 newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        showUpdateBar(newWorker);
-                    }
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) showUpdateBar(newWorker);
                 });
             });
-        })
-        .catch(err => {
-            console.log('ServiceWorker registration failed: ', err);
         });
 }
 
 function showUpdateBar(worker) {
     const bar = document.createElement('div');
     bar.className = 'update-bar';
-    bar.innerHTML = `
-        <span>Доступна нова версія!</span>
-        <button id="update-button">Оновити</button>
-    `;
+    bar.innerHTML = `<span>Доступна нова версія!</span><button id="update-button">Оновити</button>`;
     document.body.appendChild(bar);
-
     document.getElementById('update-button').addEventListener('click', () => {
         worker.postMessage({ action: 'skipWaiting' });
-
-        // Aggressive update: unregister, then reload
         setTimeout(() => {
             navigator.serviceWorker.getRegistration().then(reg => {
-                if (reg) {
-                    reg.unregister().then(() => {
-                        localStorage.removeItem('weatherCache'); // Also clear weather cache
-                        window.location.reload(true);
-                    });
-                } else {
-                    localStorage.removeItem('weatherCache');
-                    window.location.reload(true);
-                }
+                if (reg) reg.unregister().then(() => { localStorage.removeItem('weatherCache'); window.location.reload(true); });
+                else { localStorage.removeItem('weatherCache'); window.location.reload(true); }
             });
         }, 500);
     });
