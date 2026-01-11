@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Графік Світла - Миколаївка</title>
+    <style>
+        /* Оновлено: --main та --active тепер мають колір #333333 */
+        :root { --main: #333333; --line: #e0e0e0; --active: #333333; --gray-bg: #ececec; --flip-bg: #333333; --flip-text: #fff; }
+        body { font-family: sans-serif; color: var(--main); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
+        .container { width: 100%; max-width: 400px; text-align: center; }
+        
+        /* Логотип та пульсація */
+        .logo-container { margin: 10px 0 10px 0; display: flex; justify-content: center; width: 100%; }
+        .logo-container svg { width: 280px; height: 80px; }
+        :is(#back2089, #front2089) { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; } 
+        #back2089 { stroke: #cccccc; opacity: 0.3; } 
+        #front2089 { stroke: var(--active); stroke-dasharray: 260; stroke-dashoffset: 0; animation: dash_6821 1.4s linear infinite; } 
+        .pulse-text { font-family: 'Brush Script MT', cursive, sans-serif; font-size: 14px; font-weight: bold; letter-spacing: 1px; fill: var(--active); text-transform: uppercase; }
+        @keyframes dash_6821 { 0% { stroke-dashoffset: 520; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: .5; } }
+        
+        h2 { font-size: 1.3rem; font-weight: 600; margin: 0; color: var(--main); }
+        .update-status { font-size: 0.85rem; color: #666; margin: 5px 0 25px 0; font-weight: 500; }
+        h1 { font-weight: 400; font-size: 1.4rem; margin-bottom: 10px; color: var(--main); }
+
+        /* Стилі для Flip Timer */
+        .timer-wrapper { display: flex; flex-direction: column; align-items: center; margin-bottom: 25px; }
+        .timer-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; color: #777; font-weight: bold; }
+        .flip-clock { display: flex; gap: 8px; }
+        .flip-unit { display: flex; flex-direction: column; align-items: center; }
+        .flip-card { background: var(--flip-bg); color: var(--flip-text); padding: 8px 10px; border-radius: 6px; font-size: 1.8rem; font-weight: 800; min-width: 45px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        /* Лінія розділення на картці тепер світліша для кращого вигляду на #333 */
+        .flip-card::after { content: ''; position: absolute; left: 0; top: 50%; width: 100%; height: 1px; background: rgba(255,255,255,0.1); }
+        .unit-desc { font-size: 0.65rem; margin-top: 4px; opacity: 0.6; }
+        
+        .queue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+        .btn-q { background: #fff; border: 2px solid var(--main); padding: 18px; border-radius: 10px; cursor: pointer; font-size: 1.2rem; color: var(--main); font-weight: 700; }
+        
+        .tabs { display: flex; border-bottom: 2px solid var(--line); margin-bottom: 20px; width: 100%; }
+        .tab { flex: 1; padding: 15px; cursor: pointer; opacity: 0.4; border-bottom: 3px solid transparent; font-size: 1.1rem; background: none; border: none; color: var(--main); outline: none; }
+        .tab.active { opacity: 1; border-bottom: 3px solid var(--main); font-weight: 700; }
+        .weather-mini { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 5px; font-size: 0.85rem; opacity: 0.7; font-weight: 400; }
+        .weather-icon { width: 20px; height: 20px; color: var(--main); }
+        .temp-range { white-space: nowrap; }
+        
+        .slot { display: flex; justify-content: space-between; padding: 18px 10px; border-bottom: 1px solid var(--line); width: 100%; align-items: center; box-sizing: border-box; }
+        .slot.off { background: var(--gray-bg); } 
+        .slot.on { background: #ffffff; }
+        .slot.current { border-bottom-color: var(--line); }
+        .time-box { display: flex; align-items: center; gap: 10px; }
+        .time { font-size: 1.2rem; font-weight: 500; }
+        .slot-right { display: flex; align-items: center; gap: 12px; }
+        .dur { font-size: 0.9rem; color: #555; background: var(--gray-bg); padding: 4px 8px; border-radius: 6px; font-weight: 500; min-width: 80px; text-align: center; }
+        
+        .calendar-btn { cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px; transition: all 0.3s ease; animation: pulse-shadow 2s ease-in-out infinite; }
+        .calendar-btn svg { width: 24px; height: 24px; fill: var(--main); }
+        .calendar-btn.disabled { opacity: 0.2; pointer-events: none; animation: none; }
+        @keyframes pulse-shadow { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } 50% { box-shadow: 0 0 10px 2px rgba(51,51,51,0.2); } }
+        
+        .btn-change { width: 100%; margin-top: 30px; background: var(--main); color: #fff; border: none; padding: 15px; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 600; }
+        .loader-clock { width: 24px; height: 24px; stroke: var(--active); }
+        .no-actual { margin-top: 40px; opacity: 0.5; font-style: italic; font-size: 1.1rem; }
+        .hidden { display: none !important; }
+        .separator { width: 100%; height: 1px; background: var(--line); margin: 30px 0; }
+        .wiki-box { text-align: left; font-size: 0.85rem; color: #666; line-height: 1.5; padding: 0 10px; }
+        .wiki-box b { color: var(--main); }
+        .footer { margin-top: 50px; font-size: 0.75rem; color: var(--main); padding-bottom: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="logo-container">
+        <svg viewBox="0 0 240 64">
+            <polyline points="0,45 38,45 44,33 50,45 57,45 62,55 71,9 80,63 84,45 97,45 103,40 110,45 130,45" id="back2089"/>
+            <polyline points="0,45 38,45 44,33 50,45 57,45 62,55 71,9 80,63 84,45 97,45 103,40 110,45 130,45" id="front2089"/>
+            <text x="135" y="49" class="pulse-text">Миколаївка пульсує</text>
+        </svg>
+    </div>
+    <h2>Графік відключень</h2>
+    <div class="update-status" id="status">Завантаження...</div>
+    
+    <h1 id="title">Оберіть чергу</h1>
+    
+    <div id="timer-container" class="hidden"></div>
+
+    <div id="grid" class="queue-grid"></div>
+    <div id="box" class="hidden">
+        <div class="tabs">
+            <div id="tabL" class="tab active" onclick="setTab(0)">
+                Сьогодні
+                <div class="weather-mini" id="weatherToday"></div>
+            </div>
+            <div id="tabR" class="tab" onclick="setTab(1)">
+                Завтра
+                <div class="weather-mini" id="weatherTomorrow"></div>
+            </div>
+        </div>
+        <div id="content"></div>
+        <button class="btn-change" onclick="resetView()">Змінити чергу</button>
+        <div class="separator"></div>
+        <div class="wiki-box">
+            <p><b>Довідка</b></p>
+            <p><b>Іконка календаря:</b> Після натискання на іконку буде створено подію у вашому Google Календарі (на відключення або наявність світла) з автоматично заповненою назвою та часом. Час нагадування перед подією буде встановлено згідно з вашими стандартними налаштуваннями календаря.</p>
+            <p><b>Важливо:</b> Даний графік не є офіційним джерелом інформації. Дані взяті з відкритих джерел і можуть бути неточними.</p>
+        </div>
+    </div>
+    <div class="footer">&copy; <span id="year"></span> Mykhailo Anisimov</div>
+</div>
+
+<script>
+    const API_URL = "https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_new.json";
+    const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=50.2699&longitude=34.3961&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Europe/Kiev&forecast_days=2";
+    const P_LIST = ["one", "two", "three", "four", "five", "six", "seven"];
+    const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>`;
+    const clockSVG = `<svg class="loader-clock" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite"/></path></svg>`;
+    
+    const weatherIcons = {
+        sun: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="32" cy="32" r="11"/><line x1="32" y1="8" x2="32" y2="14"><animate attributeName="y2" values="14;16;14" dur="2s" repeatCount="indefinite"/></line><line x1="32" y1="50" x2="32" y2="56"><animate attributeName="y1" values="50;48;50" dur="2s" repeatCount="indefinite"/></line><line x1="8" y1="32" x2="14" y2="32"><animate attributeName="x2" values="14;16;14" dur="2s" repeatCount="indefinite"/></line><line x1="50" y1="32" x2="56" y2="32"><animate attributeName="x1" values="50;48;50" dur="2s" repeatCount="indefinite"/></line><line x1="13" y1="13" x2="17.5" y2="17.5"><animate attributeName="x2" values="17.5;19;17.5" attributeName="y2" values="17.5;19;17.5" dur="2s" repeatCount="indefinite"/></line><line x1="46.5" y1="46.5" x2="51" y2="51"><animate attributeName="x1" values="46.5;45;46.5" attributeName="y1" values="46.5;45;46.5" dur="2s" repeatCount="indefinite"/></line><line x1="13" y1="51" x2="17.5" y2="46.5"><animate attributeName="x2" values="17.5;19;17.5" dur="2s" repeatCount="indefinite"/></line><line x1="46.5" y1="17.5" x2="51" y2="13"><animate attributeName="x1" values="46.5;45;46.5" dur="2s" repeatCount="indefinite"/></line></svg>`,
+        cloudSun: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="26" cy="22" r="8"/><line x1="26" y1="8" x2="26" y2="11"/><line x1="26" y1="33" x2="26" y2="36"/><line x1="12" y1="22" x2="15" y2="22"/><line x1="37" y1="22" x2="40" y2="22"/><line x1="15.5" y1="15.5" x2="17.5" y2="17.5"/><line x1="34.5" y1="26.5" x2="36.5" y2="28.5"/><path d="M20,48 Q16,48 16,44 Q16,40 20,40 Q20,36 24,36 Q28,36 28,40 L42,40 Q46,40 46,44 Q46,48 42,48 Z"><animateTransform attributeName="transform" type="translate" values="0,0; 1,0; 0,0" dur="4s" repeatCount="indefinite"/></path></svg>`,
+        cloud: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18,40 Q14,40 14,36 Q14,32 18,32 Q18,28 22,28 Q26,28 26,32 L38,32 Q42,32 42,36 Q42,40 38,40 Z"><animateTransform attributeName="transform" type="translate" values="0,0; 2,0; 0,0" dur="5s" repeatCount="indefinite"/></path><path d="M22,48 Q18,48 18,44 Q18,40 22,40 L46,40 Q50,40 50,44 Q50,48 46,48 Z"><animateTransform attributeName="transform" type="translate" values="0,0; -2,0; 0,0" dur="5s" repeatCount="indefinite"/></path></svg>`,
+        rain: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20,32 Q16,32 16,28 Q16,24 20,24 Q20,20 24,20 Q28,20 28,24 L40,24 Q44,24 44,28 Q44,32 40,32 Z"/><line x1="24" y1="38" x2="24" y2="46"><animate attributeName="y1" values="38;40;38" dur="0.8s" repeatCount="indefinite"/><animate attributeName="y2" values="46;48;46" dur="0.8s" repeatCount="indefinite"/></line><line x1="32" y1="36" x2="32" y2="44"><animate attributeName="y1" values="36;38;36" dur="0.8s" begin="0.2s" repeatCount="indefinite"/><animate attributeName="y2" values="44;46;44" dur="0.8s" begin="0.2s" repeatCount="indefinite"/></line><line x1="40" y1="38" x2="40" y2="46"><animate attributeName="y1" values="38;40;38" dur="0.8s" begin="0.4s" repeatCount="indefinite"/><animate attributeName="y2" values="46;48;46" dur="0.8s" begin="0.4s" repeatCount="indefinite"/></line></svg>`,
+        snow: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20,32 Q16,32 16,28 Q16,24 20,24 Q20,20 24,20 Q28,20 28,24 L40,24 Q44,24 44,28 Q44,32 40,32 Z"/><g><line x1="24" y1="38" x2="24" y2="46"/><line x1="20" y1="42" x2="28" y2="42"/><line x1="21.5" y1="39.5" x2="26.5" y2="44.5"/><line x1="26.5" y1="39.5" x2="21.5" y2="44.5"/><animateTransform attributeName="transform" type="translate" values="0,0; 0,2; 0,0" dur="2s" repeatCount="indefinite"/></g><g><line x1="40" y1="38" x2="40" y2="46"/><line x1="36" y1="42" x2="44" y2="42"/><line x1="37.5" y1="39.5" x2="42.5" y2="44.5"/><line x1="42.5" y1="39.5" x2="37.5" y2="44.5"/><animateTransform attributeName="transform" type="translate" values="0,0; 0,2; 0,0" dur="2s" begin="0.5s" repeatCount="indefinite"/></g></svg>`
+    };
+
+    let dayPrefixMap = JSON.parse(localStorage.getItem('calibratedMap')) || [5, 6, 0, 1, 2, 3, 4];
+    let db = null, curQ = localStorage.getItem('selectedQueue'), currentIdx = 0, weatherData = null;
+    let timerData = null;
+
+    async function init() {
+        document.getElementById('year').innerText = new Date().getFullYear();
+        await fetchData();
+        await fetchWeather();
+        renderGrid();
+        if (curQ) selectQ(curQ);
+        setInterval(() => { if (curQ) fetchData(); }, 60000);
+        setInterval(() => { if (curQ) updateFlipTimer(); }, 1000);
+        setInterval(() => { fetchWeather(); }, 3600000); // Погода раз на годину
+    }
+
+    async function fetchData() {
+        try {
+            const r = await fetch(`${API_URL}?t=${Date.now()}`);
+            db = await r.json();
+            document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
+            if (curQ) { syncLogic(); calculateTimerData(); render(); }
+        } catch (e) { document.getElementById('status').innerText = "Помилка зв'язку"; }
+    }
+
+    async function fetchWeather() {
+        try {
+            const r = await fetch(WEATHER_API);
+            const data = await r.json();
+            weatherData = {
+                today: { max: Math.round(data.daily.temperature_2m_max[0]), min: Math.round(data.daily.temperature_2m_min[0]), code: data.daily.weathercode[0] },
+                tomorrow: { max: Math.round(data.daily.temperature_2m_max[1]), min: Math.round(data.daily.temperature_2m_min[1]), code: data.daily.weathercode[1] }
+            };
+            render();
+        } catch (e) { console.error("Weather error"); }
+    }
+
+    function getWeatherIcon(code) {
+        if (code === 0) return weatherIcons.sun;
+        if (code >= 1 && code <= 3) return weatherIcons.cloudSun;
+        if (code >= 45 && code <= 48) return weatherIcons.cloud;
+        if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return weatherIcons.rain;
+        if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return weatherIcons.snow;
+        return weatherIcons.cloud;
+    }
+
+    function syncLogic() {
+        if (!db || !curQ) return;
+        const [dPart] = db.update_time.split(' ');
+        const [d, m, y] = dPart.split('.').map(Number);
+        const fileDate = new Date(y, m - 1, d); fileDate.setHours(0,0,0,0);
+        const now = new Date(); now.setHours(0,0,0,0);
+        const daysDiff = Math.round((now - fileDate) / 86400000);
+        if (daysDiff === 1) {
+            const qData = db[`${curQ}_cherg`];
+            const keys = Object.keys(qData);
+            const available = [...new Set(keys.map(k => k.split('_')[0]))];
+            available.sort((a,b) => P_LIST.indexOf(a) - P_LIST.indexOf(b));
+            const lastIdxInFile = P_LIST.indexOf(available[available.length - 1]);
+            const todayIdx = (now.getDay() + 6) % 7; 
+            if (dayPrefixMap[todayIdx] !== lastIdxInFile) {
+                const offset = (lastIdxInFile - todayIdx + 7) % 7;
+                for (let i = 0; i < 7; i++) dayPrefixMap[i] = (i + offset) % 7;
+                localStorage.setItem('calibratedMap', JSON.stringify(dayPrefixMap));
+            }
+        }
+    }
+
+    function calculateTimerData() {
+        if (!db || !curQ) return;
+        const now = new Date();
+        const todayIdx = (now.getDay() + 6) % 7;
+        const allEvents = [];
+        for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
+            const targetIdx = (todayIdx + dayOffset) % 7;
+            const pref = P_LIST[dayPrefixMap[targetIdx]];
+            const qData = db[`${curQ}_cherg`];
+            const slots = Object.keys(qData).filter(k => k.startsWith(pref + '_')).map(k => {
+                const val = qData[k];
+                if (val.includes("Немає")) return null;
+                const [s, e] = val.split('-').map(t => {
+                    const [h, m] = t.split(':').map(Number); return h * 60 + m;
+                });
+                return { start: s + dayOffset * 1440, end: (e === 0 ? 1440 : e) + dayOffset * 1440, type: 'off' };
+            }).filter(v => v !== null);
+            let last = dayOffset * 1440;
+            slots.sort((a,b) => a.start - b.start).forEach(s => {
+                if (s.start > last) allEvents.push({ start: last, end: s.start, type: 'on' });
+                allEvents.push(s); last = s.end;
+            });
+            if (last < (dayOffset + 1) * 1440) allEvents.push({ start: last, end: (dayOffset + 1) * 1440, type: 'on' });
+        }
+        const nowTotal = now.getHours() * 60 + now.getMinutes();
+        const currentSlot = allEvents.find(ev => nowTotal >= ev.start && nowTotal < ev.end);
+        timerData = currentSlot ? { endTime: currentSlot.end * 60, type: currentSlot.type } : null;
+    }
+
+    function updateFlipTimer() {
+        const timerCont = document.getElementById('timer-container');
+        const now = new Date();
+        let h, m, s, label;
+
+        if (timerData) {
+            const nowInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+            let diff = timerData.endTime - nowInSeconds;
+            if (diff >= 0) {
+                h = Math.floor(diff / 3600); m = Math.floor((diff % 3600) / 60); s = diff % 60;
+                label = timerData.type === 'off' ? "До ввімкнення:" : "До відключення:";
+            } else { calculateTimerData(); return; }
+        } else {
+            h = now.getHours(); m = now.getMinutes(); s = now.getSeconds();
+            label = "Поточний час:";
+        }
+
+        timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label">${label}</div><div class="flip-clock">
+            <div class="flip-unit"><div class="flip-card">${h.toString().padStart(2, '0')}</div><div class="unit-desc">год</div></div>
+            <div class="flip-unit"><div class="flip-card">${m.toString().padStart(2, '0')}</div><div class="unit-desc">хв</div></div>
+            <div class="flip-unit"><div class="flip-card">${s.toString().padStart(2, '0')}</div><div class="unit-desc">сек</div></div>
+        </div></div>`;
+        timerCont.classList.remove('hidden');
+    }
+
+    function render() {
+        if (!db || !curQ) return;
+        const cont = document.getElementById('content');
+        const qData = db[`${curQ}_cherg`];
+        const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
+        document.getElementById('tabL').classList.toggle('active', currentIdx === 0);
+        document.getElementById('tabR').classList.toggle('active', currentIdx === 1);
+        if (weatherData) {
+            const tw = weatherData.today, tm = weatherData.tomorrow;
+            document.getElementById('weatherToday').innerHTML = `${getWeatherIcon(tw.code)} <span class="temp-range">${tw.max > 0 ? '+' : ''}${tw.max}° / ${tw.min > 0 ? '+' : ''}${tw.min}°</span>`;
+            document.getElementById('weatherTomorrow').innerHTML = `${getWeatherIcon(tm.code)} <span class="temp-range">${tm.max > 0 ? '+' : ''}${tm.max}° / ${tm.min > 0 ? '+' : ''}${tm.min}°</span>`;
+        }
+        const todayIdx = (now.getDay() + 6) % 7;
+        const targetDayIdx = currentIdx === 0 ? todayIdx : (todayIdx + 1) % 7;
+        const pref = P_LIST[dayPrefixMap[targetDayIdx]];
+        const slots = Object.keys(qData).filter(k => k.startsWith(pref + '_')).map(k => {
+            const val = qData[k];
+            if (val.includes("Немає")) return null;
+            const [s, e] = val.split('-').map(t => {
+                const [h, m] = t.split(':').map(Number); return h * 60 + m;
+            });
+            return { start: s, end: (e === 0 ? 1440 : e), type: 'off' };
+        }).filter(v => v !== null).sort((a,b) => a.start - b.start);
+        if (slots.length === 0) { cont.innerHTML = `<div class="no-actual">Графік на ${currentIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`; return; }
+        let full = []; let last = 0;
+        slots.forEach(s => {
+            if (s.start > last) full.push({ start: last, end: s.start, type: 'on' });
+            full.push(s); last = s.end;
+        });
+        if (last < 1440) full.push({ start: last, end: 1440, type: 'on' });
+        const display = full.filter(ev => currentIdx === 0 ? ev.end > nowM : true);
+        cont.innerHTML = display.map(ev => {
+            const isToday = currentIdx === 0;
+            const s = `${Math.floor(ev.start/60).toString().padStart(2,'0')}:${(ev.start%60).toString().padStart(2,'0')}`;
+            const e = `${Math.floor(ev.end/60 % 24).toString().padStart(2,'0')}:${(ev.end%60).toString().padStart(2,'0')}`;
+            const isCur = isToday && nowM >= ev.start && nowM < ev.end;
+            const isLocked = isToday && (ev.start - nowM <= 60);
+            const dur = (ev.end - ev.start) / 60;
+            return `<div class="slot ${ev.type} ${isCur ? 'current' : ''}">
+                <div class="time-box"><span class="time">${s}-${e}</span></div>
+                <div class="slot-right">
+                    <span class="dur">${dur % 1 === 0 ? dur : dur.toFixed(1)} год/${ev.type==='off'?'викл':'вкл'}</span>
+                    <div style="width:32px; display:flex; justify-content:center;">
+                        ${isCur ? clockSVG : `<div class="calendar-btn ${isLocked ? 'disabled' : ''}" onclick="${isLocked ? '' : `addToCal('${s}-${e}', ${isToday}, '${ev.type}')`}">${calendarSVG}</div>`}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderGrid() {
+        const qs = ["1.1","1.2","2.1","2.2","3.1","3.2","4.1","4.2","5.1","5.2","6.1","6.2"];
+        document.getElementById('grid').innerHTML = qs.map(q => `<button class="btn-q" onclick="selectQ('${q}')">${q}</button>`).join('');
+    }
+
+    function selectQ(q) {
+        curQ = q; localStorage.setItem('selectedQueue', q);
+        document.getElementById('grid').classList.add('hidden');
+        document.getElementById('box').classList.remove('hidden');
+        document.getElementById('title').innerText = `Черга ${q}`;
+        calculateTimerData(); render();
+    }
+
+    function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
+    function setTab(i) { currentIdx = i; render(); }
+    function addToCal(slot, isToday, type) {
+        const [sT, eT] = slot.split('-');
+        const d = new Date(); if (!isToday) d.setDate(d.getDate() + 1);
+        const iso = (t) => {
+            const [h, m] = t.split(':').map(Number);
+            const date = new Date(d); date.setHours(h, m, 0, 0);
+            return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+        };
+        const title = (type === 'off' ? `⚡ Відключення ${curQ}` : `💡 Світло ${curQ}`);
+        window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${iso(sT)}/${iso(eT)}&sf=true&output=xml`, '_blank');
+    }
+    init();
+</script>
+</body>
+</html>
