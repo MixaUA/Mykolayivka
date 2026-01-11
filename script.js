@@ -20,12 +20,13 @@ let timerData = null;
 
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
+    updateFlipTimer(); // Початковий виклик для негайного відображення
     await fetchData();
     await fetchWeather();
     renderGrid();
     if (curQ) selectQ(curQ);
     setInterval(() => { if (curQ) fetchData(); }, 60000);
-    setInterval(() => { if (curQ) updateFlipTimer(); }, 1000);
+    setInterval(updateFlipTimer, 1000); // Завжди оновлювати таймер
     setInterval(() => { fetchWeather(); }, 3600000); // Погода раз на годину
 }
 
@@ -115,29 +116,88 @@ function calculateTimerData() {
     timerData = currentSlot ? { endTime: currentSlot.end * 60, type: currentSlot.type } : null;
 }
 
+function initDigitStrip(id) {
+    const strip = document.getElementById(id);
+    if (!strip) return;
+    let html = '';
+    for (let i = 0; i <= 9; i++) {
+        html += `<div class="roll-num">${i}</div>`;
+    }
+    strip.innerHTML = html;
+}
+
+function setDigit(id, value) {
+    const strip = document.getElementById(id);
+    if (!strip) return;
+    const height = 52;
+    const offset = value * height;
+    strip.style.transform = `translateY(-${offset}px)`;
+}
+
 function updateFlipTimer() {
     const timerCont = document.getElementById('timer-container');
+    if (!timerCont) return;
+
     const now = new Date();
     let h, m, s, label;
 
-    if (timerData) {
+    if (curQ && timerData) {
         const nowInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
         let diff = timerData.endTime - nowInSeconds;
         if (diff >= 0) {
-            h = Math.floor(diff / 3600); m = Math.floor((diff % 3600) / 60); s = diff % 60;
+            h = Math.floor(diff / 3600);
+            m = Math.floor((diff % 3600) / 60);
+            s = diff % 60;
             label = timerData.type === 'off' ? "До ввімкнення:" : "До відключення:";
-        } else { calculateTimerData(); return; }
+        } else {
+            calculateTimerData();
+            return;
+        }
     } else {
-        h = now.getHours(); m = now.getMinutes(); s = now.getSeconds();
+        h = now.getHours();
+        m = now.getMinutes();
+        s = now.getSeconds();
         label = "Поточний час:";
     }
 
-    timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label">${label}</div><div class="flip-clock">
-        <div class="flip-unit"><div class="flip-card">${h.toString().padStart(2, '0')}</div><div class="unit-desc">год</div></div>
-        <div class="flip-unit"><div class="flip-card">${m.toString().padStart(2, '0')}</div><div class="unit-desc">хв</div></div>
-        <div class="flip-unit"><div class="flip-card">${s.toString().padStart(2, '0')}</div><div class="unit-desc">сек</div></div>
-    </div></div>`;
-    timerCont.classList.remove('hidden');
+    if (!timerCont.querySelector('.flip-clock')) {
+        timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label"></div><div class="flip-clock">
+            <div class="flip-unit">
+                <div class="flip-pair">
+                    <div class="roll-digit-container"><div id="h1" class="roll-digit-strip"></div></div>
+                    <div class="roll-digit-container"><div id="h2" class="roll-digit-strip"></div></div>
+                </div>
+                <div class="unit-desc">год</div>
+            </div>
+            <div class="flip-unit">
+                <div class="flip-pair">
+                    <div class="roll-digit-container"><div id="m1" class="roll-digit-strip"></div></div>
+                    <div class="roll-digit-container"><div id="m2" class="roll-digit-strip"></div></div>
+                </div>
+                <div class="unit-desc">хв</div>
+            </div>
+            <div class="flip-unit">
+                <div class="flip-pair">
+                    <div class="roll-digit-container"><div id="s1" class="roll-digit-strip"></div></div>
+                    <div class="roll-digit-container"><div id="s2" class="roll-digit-strip"></div></div>
+                </div>
+                <div class="unit-desc">сек</div>
+            </div>
+        </div></div>`;
+        initDigitStrip('h1'); initDigitStrip('h2');
+        initDigitStrip('m1'); initDigitStrip('m2');
+        initDigitStrip('s1'); initDigitStrip('s2');
+    }
+
+    setDigit('h1', Math.floor(h / 10));
+    setDigit('h2', h % 10);
+    setDigit('m1', Math.floor(m / 10));
+    setDigit('m2', m % 10);
+    setDigit('s1', Math.floor(s / 10));
+    setDigit('s2', s % 10);
+    
+    const timerLabel = timerCont.querySelector('.timer-label');
+    if (timerLabel) timerLabel.textContent = label;
 }
 
 function render() {

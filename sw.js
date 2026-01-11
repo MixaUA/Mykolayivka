@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mykolaivka-schedule-cache-v11';
+const CACHE_NAME = 'mykolaivka-schedule-cache-v12';
 const urlsToCache = [
   './', // Cache the index.html
   './index.html',
