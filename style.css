@@ -151,7 +151,7 @@ h1 {
 .dur {
     font-size: 0.9rem;
     color: #555;
-    background: var(--gray-bg);
+    background: transparent;
     padding: 4px 8px;
     border-radius: 6px;
     font-weight: 500;
