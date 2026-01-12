@@ -1,0 +1,58 @@
+name: Sync Database with Logging
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Авто-синхронізація кожні 30 хвилин
+  workflow_dispatch:      # Дозволяє запускати вручну кнопкою
+
+jobs:
+  update-json:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up logging
+        run: |
+          mkdir -p logs
+          LNAME="logs/sync_$(date +'%Y%m%d%H%M').log"
+          echo "LOG_FILE=$LNAME" >> $GITHUB_ENV
+          echo "=== Запуск: $(date) ===" > "$LNAME"
+
+      - name: Fetch external JSON
+        run: |
+          echo "Копіюємо дані з Aporial..." >> ${{ env.LOG_FILE }}
+          URL_SOURCE="https://raw.githubusercontent.com/Aporial/Svitlo-Sumy-Databases/main/database_new.json"
+          curl -s "$URL_SOURCE" -o database_new.json.tmp
+          
+          if [ ! -s database_new.json.tmp ]; then
+            echo "Помилка: файл джерела порожній!" >> ${{ env.LOG_FILE }}
+            exit 1
+          fi
+
+      - name: Commit if changed
+        run: |
+          git config --global user.name "GitHub Action Bot"
+          git config --global user.email "actions@github.com"
+          
+          if cmp -s database_new.json database_new.json.tmp; then
+            echo "Змін немає." >> ${{ env.LOG_FILE }}
+            rm database_new.json.tmp || true
+          else
+            echo "Оновлюємо твій RAW..." >> ${{ env.LOG_FILE }}
+            mv database_new.json.tmp database_new.json
+            git add database_new.json
+            git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M')"
+            git push
+          fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-log-${{ github.run_id }}
+          path: ${{ env.LOG_FILE }}
+          retention-days: 7
