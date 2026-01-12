@@ -61,11 +61,12 @@ async function fetchData() {
     const cachedData = localStorage.getItem(CACHE_KEY);
     const lastFetch = localStorage.getItem(CACHE_TIME_KEY);
 
-    // ЗАХИСТ: Не турбуємо сервер частіше 15 хв при перезавантаженні сторінки
+    // ЗАХИСТ: Використовуємо дані з пам'яті без зайвих запитів
     if (cachedData && lastFetch && (now - lastFetch < FIFTEEN_MIN)) {
         try {
             db = JSON.parse(cachedData);
-            document.getElementById('status').innerText = `Кеш: ${db.update_time}`;
+            // Повертаємо чистий вигляд: тільки дата
+            document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
             if (curQ) { syncLogic(); calculateTimerData(); render(); }
             return; 
         } catch (e) { console.error("Cache corrupted"); }
