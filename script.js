@@ -1,6 +1,7 @@
 const API_URL = "https://raw.githubusercontent.com/MixaUA/Mykolayivka/main/database_new.json";
 const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=50.2699&longitude=34.3961&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Europe/Kiev&forecast_days=2";
 const P_LIST = ["one", "two", "three", "four", "five", "six", "seven"];
+
 const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>`;
 const clockSVG = `<svg class="loader-clock" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite"/></path></svg>`;
 const powerOffSVG = `<svg class="icon-pwr" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2.5"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/></svg>`;
@@ -21,29 +22,72 @@ let db = null, curQ = localStorage.getItem('selectedQueue'), dayIdx = 0, viewMod
 let timerData = null;
 let clickedSlots = JSON.parse(localStorage.getItem('clickedSlots')) || {};
 
-function fmtTemp(t) {
-    return t > 0 ? `+${t}°` : `${t}°`;
-}
+function fmtTemp(t) { return t > 0 ? `+${t}°` : `${t}°`; }
 
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
     updateFlipTimer(); 
-    await fetchData();
+    await fetchData(); // Первинне завантаження
     await fetchWeather();
     renderGrid();
     if (curQ) selectQ(curQ);
-    setInterval(() => { if (curQ) fetchData(); }, 60000);
+
+    // Щосекундний таймер цифр
     setInterval(updateFlipTimer, 1000); 
+
+    // Локальне оновлення візуалу щохвилини (сітка + список)
+    setInterval(() => { 
+        if (curQ && db) {
+            calculateTimerData(); 
+            render(); 
+        }
+    }, 60000);
+
+    // Перевірка нових даних на GitHub кожні 20 хв
+    setInterval(async () => { 
+        if (curQ) await fetchData(); 
+    }, 1200000);
+
+    // Оновлення погоди щогодини
     setInterval(() => { fetchWeather(); }, 3600000); 
 }
 
 async function fetchData() {
+    const CACHE_KEY = 'db_cache';
+    const CACHE_TIME_KEY = 'db_cache_time';
+    const FIFTEEN_MIN = 15 * 60 * 1000;
+    const now = Date.now();
+
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    const lastFetch = localStorage.getItem(CACHE_TIME_KEY);
+
+    // ЗАХИСТ: Не турбуємо сервер частіше 15 хв при перезавантаженні сторінки
+    if (cachedData && lastFetch && (now - lastFetch < FIFTEEN_MIN)) {
+        try {
+            db = JSON.parse(cachedData);
+            document.getElementById('status').innerText = `Кеш: ${db.update_time}`;
+            if (curQ) { syncLogic(); calculateTimerData(); render(); }
+            return; 
+        } catch (e) { console.error("Cache corrupted"); }
+    }
+
     try {
-        const r = await fetch(`${API_URL}?t=${Date.now()}`);
+        const r = await fetch(`${API_URL}?t=${now}`);
+        if (!r.ok) throw new Error("Network error");
         db = await r.json();
+        
+        localStorage.setItem(CACHE_KEY, JSON.stringify(db));
+        localStorage.setItem(CACHE_TIME_KEY, now.toString());
+
         document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
         if (curQ) { syncLogic(); calculateTimerData(); render(); }
-    } catch (e) { document.getElementById('status').innerText = "Помилка зв'язку"; }
+    } catch (e) { 
+        document.getElementById('status').innerText = "Помилка зв'язку";
+        if (cachedData) {
+            db = JSON.parse(cachedData);
+            if (curQ) { syncLogic(); calculateTimerData(); render(); }
+        }
+    }
 }
 
 async function fetchWeather() {
@@ -61,10 +105,7 @@ async function fetchWeather() {
         if (curQ) render();
     } catch (e) { 
         const cached = localStorage.getItem('weatherCache');
-        if (cached) {
-            weatherData = JSON.parse(cached);
-            if (curQ) render();
-        } else { weatherData = null; }
+        if (cached) { weatherData = JSON.parse(cached); if (curQ) render(); }
     }
 }
 
@@ -115,16 +156,14 @@ function calculateTimerData() {
         const qData = db[`${curQ}_cherg`];
         const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
         if (dayKeys.length === 0) continue;
-        const firstValue = qData[dayKeys[0]];
-        if (!/\d/.test(firstValue) || !firstValue.includes('-')) continue;
-
         const slots = dayKeys.map(k => {
             const val = qData[k];
+            if (!/\d/.test(val)) return null;
             const [s, e] = val.split('-').map(t => {
                 const [h, m] = t.split(':').map(Number); return h * 60 + m;
             });
             return { start: s + dayOffset * 1440, end: (e === 0 ? 1440 : e) + dayOffset * 1440, type: 'off' };
-        });
+        }).filter(s => s !== null);
         
         let last = dayOffset * 1440;
         slots.sort((a,b) => a.start - b.start).forEach(s => {
@@ -142,18 +181,13 @@ function initDigitStrip(id) {
     const strip = document.getElementById(id);
     if (!strip) return;
     let html = '';
-    for (let i = 0; i <= 9; i++) {
-        html += `<div class="roll-num">${i}</div>`;
-    }
+    for (let i = 0; i <= 9; i++) html += `<div class="roll-num">${i}</div>`;
     strip.innerHTML = html;
 }
 
 function setDigit(id, value) {
     const strip = document.getElementById(id);
-    if (!strip) return;
-    const height = 52;
-    const offset = value * height;
-    strip.style.transform = `translateY(-${offset}px)`;
+    if (strip) strip.style.transform = `translateY(-${value * 52}px)`;
 }
 
 function updateFlipTimer() {
@@ -165,14 +199,11 @@ function updateFlipTimer() {
         const nowInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
         let diff = timerData.endTime - nowInSeconds;
         if (diff >= 0) {
-            h = Math.floor(diff / 3600);
-            m = Math.floor((diff % 3600) / 60);
-            s = diff % 60;
+            h = Math.floor(diff / 3600); m = Math.floor((diff % 3600) / 60); s = diff % 60;
             label = timerData.type === 'off' ? "До ввімкнення:" : "До відключення:";
         } else { calculateTimerData(); return; }
     } else {
-        h = now.getHours(); m = now.getMinutes(); s = now.getSeconds();
-        label = "Поточний час:";
+        h = now.getHours(); m = now.getMinutes(); s = now.getSeconds(); label = "Поточний час:";
     }
     if (!timerCont.querySelector('.flip-clock')) {
         timerCont.innerHTML = `<div class="timer-wrapper"><div class="timer-label"></div><div class="flip-clock">
@@ -185,8 +216,8 @@ function updateFlipTimer() {
     setDigit('h1', Math.floor(h / 10)); setDigit('h2', h % 10);
     setDigit('m1', Math.floor(m / 10)); setDigit('m2', m % 10);
     setDigit('s1', Math.floor(s / 10)); setDigit('s2', s % 10);
-    const timerLabel = timerCont.querySelector('.timer-label');
-    if (timerLabel) timerLabel.textContent = label;
+    const tL = timerCont.querySelector('.timer-label');
+    if (tL) tL.textContent = label;
 }
 
 function render() {
@@ -194,41 +225,25 @@ function render() {
     const qData = db[`${curQ}_cherg`];
     const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
     
-    const elToday = document.getElementById('weatherToday');
-    const elTomorrow = document.getElementById('weatherTomorrow');
+    // Погода
+    const elToday = document.getElementById('weatherToday'), elTomorrow = document.getElementById('weatherTomorrow');
     if (weatherData && elToday && elTomorrow) {
-        const tw = weatherData.today, tm = weatherData.tomorrow;
-        elToday.innerHTML = `${getWeatherIcon(tw.code)} <span class="temp-range">${fmtTemp(tw.max)} / ${fmtTemp(tw.min)}</span>`;
-        elTomorrow.innerHTML = `${getWeatherIcon(tm.code)} <span class="temp-range">${fmtTemp(tm.max)} / ${fmtTemp(tm.min)}</span>`;
-    } else if (elToday && elTomorrow) {
-        elToday.innerHTML = "—"; elTomorrow.innerHTML = "—";
+        elToday.innerHTML = `${getWeatherIcon(weatherData.today.code)} <span class="temp-range">${fmtTemp(weatherData.today.max)} / ${fmtTemp(weatherData.today.min)}</span>`;
+        elTomorrow.innerHTML = `${getWeatherIcon(weatherData.tomorrow.code)} <span class="temp-range">${fmtTemp(weatherData.tomorrow.max)} / ${fmtTemp(weatherData.tomorrow.min)}</span>`;
     }
 
     const tDayIdx = ((now.getDay() + 6) % 7 + dayIdx) % 7;
     const pref = P_LIST[dayPrefixMap[tDayIdx]];
     const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
 
-    let messageToDisplay = null;
+    let msg = null;
+    if (dayKeys.length === 0) msg = `<div class="no-actual">Графік на ${dayIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
+    else if (!/\d/.test(qData[dayKeys[0]])) msg = `<div class="no-actual">${qData[dayKeys[0]]}</div>`;
 
-    if (dayKeys.length === 0) {
-        messageToDisplay = `<div class="no-actual">Графік на ${dayIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
-    } else {
-        const firstValue = qData[dayKeys[0]];
-        const isSchedule = /\d/.test(firstValue) && firstValue.includes('-');
-
-        if (!isSchedule) {
-            messageToDisplay = `<div class="no-actual">${firstValue}</div>`;
-        }
-    }
-
-    const contentList = document.getElementById('content-list');
-    const contentVisual = document.getElementById('content-visual');
-
-    if (messageToDisplay) {
-        if(contentList) contentList.innerHTML = messageToDisplay;
-        if(contentVisual) document.getElementById('hours-grid').innerHTML = messageToDisplay;
-        if(contentList) contentList.classList.toggle('hidden', viewMode !== 1);
-        if(contentVisual) contentVisual.classList.toggle('hidden', viewMode !== 2);
+    if (msg) {
+        const cl = document.getElementById('content-list'), cv = document.getElementById('content-visual');
+        if(cl) { cl.innerHTML = msg; cl.classList.toggle('hidden', viewMode !== 1); }
+        if(cv) { document.getElementById('hours-grid').innerHTML = msg; cv.classList.toggle('hidden', viewMode !== 2); }
         return;
     }
 
@@ -256,7 +271,6 @@ function renderList(full, nowM) {
     if (!cont) return;
     cont.classList.toggle('hidden', viewMode !== 1);
     const display = full.filter(ev => dayIdx === 0 ? ev.end > nowM : true);
-    
     const d = new Date(); if (dayIdx === 1) d.setDate(d.getDate() + 1);
     const dateStr = d.toISOString().split('T')[0];
 
@@ -265,17 +279,15 @@ function renderList(full, nowM) {
         const dur = (ev.end - ev.start) / 60;
         const isCur = dayIdx === 0 && nowM >= ev.start && nowM < ev.end;
         const isLocked = dayIdx === 0 && (ev.start - nowM <= 60);
-
-        const slotKey = `${dateStr}-${curQ}-${ev.raw || (s+e)}`;
-        const slotId = btoa(unescape(encodeURIComponent(slotKey))).replace(/=/g, '');
-        const hasBeenClicked = clickedSlots.hasOwnProperty(slotId);
+        const slotId = btoa(unescape(encodeURIComponent(`${dateStr}-${curQ}-${ev.raw || (s+e)}`))).replace(/=/g, '');
+        const hasClicked = clickedSlots.hasOwnProperty(slotId);
 
         return `<div class="slot ${ev.type} ${isCur ? 'current' : ''}">
             <div class="time-box"><span class="time">${s}-${e}</span></div>
             <div class="slot-right">
                 <span class="dur">${dur % 1 === 0 ? dur : dur.toFixed(1)} год/${ev.type==='off'?'викл':'вкл'}</span>
                 <div style="width:32px; display:flex; justify-content:center;">
-                    ${isCur ? clockSVG : `<div class="calendar-btn ${isLocked ? 'disabled' : ''} ${hasBeenClicked ? 'no-anim' : ''}" 
+                    ${isCur ? clockSVG : `<div class="calendar-btn ${isLocked ? 'disabled' : ''} ${hasClicked ? 'no-anim' : ''}" 
                         onclick="${isLocked ? '' : `handleCalendarClick('${s}-${e}', ${dayIdx===0}, '${ev.type}', '${slotId}')`}">
                         ${calendarSVG}
                     </div>`}
@@ -287,6 +299,7 @@ function renderList(full, nowM) {
 
 function renderVisual(slots, nowM) {
     const cont = document.getElementById('content-visual');
+    if (!cont) return;
     cont.classList.toggle('hidden', viewMode !== 2);
     const grid = document.getElementById('hours-grid');
     let html = '';
@@ -308,7 +321,8 @@ function minToTime(m) { return `${Math.floor(m/60 % 24).toString().padStart(2,'0
 
 function renderGrid() {
     const qs = ["1.1","1.2","2.1","2.2","3.1","3.2","4.1","4.2","5.1","5.2","6.1","6.2"];
-    document.getElementById('grid').innerHTML = qs.map(q => `<button class="btn-q" onclick="selectQ('${q}')">${q}</button>`).join('');
+    const g = document.getElementById('grid');
+    if (g) g.innerHTML = qs.map(q => `<button class="btn-q" onclick="selectQ('${q}')">${q}</button>`).join('');
 }
 
 function selectQ(q) {
@@ -320,46 +334,25 @@ function selectQ(q) {
 }
 
 function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
-
-function setDay(i) {
-    dayIdx = i;
-    document.getElementById('tabL').classList.toggle('active', i === 0);
-    document.getElementById('tabR').classList.toggle('active', i === 1);
-    render();
-}
-
-function setView(v) {
-    viewMode = v;
-    document.getElementById('view1').classList.toggle('active', v === 1);
-    document.getElementById('view2').classList.toggle('active', v === 2);
-    render();
-}
+function setDay(i) { dayIdx = i; document.getElementById('tabL').classList.toggle('active', i === 0); document.getElementById('tabR').classList.toggle('active', i === 1); render(); }
+function setView(v) { viewMode = v; document.getElementById('view1').classList.toggle('active', v === 1); document.getElementById('view2').classList.toggle('active', v === 2); render(); }
 
 function cleanOldClicks() {
     const now = Date.now();
-    let isChanged = false;
-    for (const key in clickedSlots) {
-        if (now - clickedSlots[key] > 172800000) { delete clickedSlots[key]; isChanged = true; }
-    }
-    if (isChanged) localStorage.setItem('clickedSlots', JSON.stringify(clickedSlots));
+    for (const k in clickedSlots) if (now - clickedSlots[k] > 172800000) delete clickedSlots[k];
+    localStorage.setItem('clickedSlots', JSON.stringify(clickedSlots));
+}
+
+function handleCalendarClick(slot, isToday, type, slotId) {
+    const action = () => { openGoogleCalendar(slot, isToday, type); clickedSlots[slotId] = Date.now(); localStorage.setItem('clickedSlots', JSON.stringify(clickedSlots)); render(); };
+    if (clickedSlots.hasOwnProperty(slotId)) showCustomAlert(action); else action();
 }
 
 function showCustomAlert(onConfirm) {
     let overlay = document.getElementById('modalOverlay');
     if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'modalOverlay';
-        overlay.className = 'modal-overlay';
-        overlay.innerHTML = `
-            <div class="modal-content">
-                <div style="font-size:40px; margin-bottom:10px;">📅</div>
-                <h3 style="margin:0 0 10px; color:#222;">Вже у календарі?</h3>
-                <p style="margin:0; color:#666; font-size:14px;">Ви вже додавали цей слот. Бажаєте перейти до календаря ще раз?</p>
-                <div class="modal-btns">
-                    <button class="btn-modal btn-go" id="modalGo">Перейти в календар</button>
-                    <button class="btn-modal btn-exit" id="modalExit">Вийти</button>
-                </div>
-            </div>`;
+        overlay = document.createElement('div'); overlay.id = 'modalOverlay'; overlay.className = 'modal-overlay';
+        overlay.innerHTML = `<div class="modal-content"><div style="font-size:40px; margin-bottom:10px;">📅</div><h3 style="margin:0 0 10px; color:#222;">Вже у календарі?</h3><p style="margin:0; color:#666; font-size:14px;">Ви вже додавали цей слот. Перейти ще раз?</p><div class="modal-btns"><button class="btn-modal btn-go" id="modalGo">Перейти</button><button class="btn-modal btn-exit" id="modalExit">Вийти</button></div></div>`;
         document.body.appendChild(overlay);
     }
     overlay.classList.add('active');
@@ -367,59 +360,32 @@ function showCustomAlert(onConfirm) {
     document.getElementById('modalExit').onclick = () => overlay.classList.remove('active');
 }
 
-function handleCalendarClick(slot, isToday, type, slotId) {
-    const openAction = () => {
-        openGoogleCalendar(slot, isToday, type);
-        clickedSlots[slotId] = Date.now();
-        localStorage.setItem('clickedSlots', JSON.stringify(clickedSlots));
-        render();
-    };
-
-    if (clickedSlots.hasOwnProperty(slotId)) {
-        showCustomAlert(openAction);
-    } else {
-        openAction();
-    }
-}
-
 function openGoogleCalendar(slot, isToday, type) {
     const [sT, eT] = slot.split('-');
     const d = new Date(); if (!isToday) d.setDate(d.getDate() + 1);
-    const iso = (t) => {
-        const [h, m] = t.split(':').map(Number); const date = new Date(d);
-        date.setHours(h, m, 0, 0); return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
-    };
+    const iso = (t) => { const [h, m] = t.split(':').map(Number); const date = new Date(d); date.setHours(h, m, 0, 0); return date.toISOString().replace(/-|:|\.\d\d\d/g, ""); };
     const title = `Черга ${curQ}: ${type==='off'?'Відключення':'Включення'} (${sT}-${eT})`;
     window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${iso(sT)}/${iso(eT)}&sf=true&output=xml`, '_blank');
 }
 
 function registerSW() {
     if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
-        .then(registration => {
-            registration.addEventListener('updatefound', () => {
-                const newWorker = registration.installing;
-                newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) showUpdateBar(newWorker);
-                });
-            });
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
+        reg.addEventListener('updatefound', () => {
+            const w = reg.installing;
+            w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) showUpdateBar(w); });
         });
+    });
 }
 
 function showUpdateBar(worker) {
-    const bar = document.createElement('div');
-    bar.className = 'update-bar';
+    const bar = document.createElement('div'); bar.className = 'update-bar';
     bar.innerHTML = `<span>Доступна нова версія!</span><button id="update-button">Оновити</button>`;
     document.body.appendChild(bar);
-    document.getElementById('update-button').addEventListener('click', () => {
+    document.getElementById('update-button').onclick = () => { 
         worker.postMessage({ action: 'skipWaiting' });
-        setTimeout(() => {
-            navigator.serviceWorker.getRegistration().then(reg => {
-                if (reg) reg.unregister().then(() => { localStorage.removeItem('weatherCache'); window.location.reload(true); });
-                else { localStorage.removeItem('weatherCache'); window.location.reload(true); }
-            });
-        }, 500);
-    });
+        setTimeout(() => { localStorage.removeItem('weatherCache'); window.location.reload(true); }, 500);
+    };
 }
 
 cleanOldClicks();
