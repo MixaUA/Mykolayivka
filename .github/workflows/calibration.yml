@@ -1,0 +1,88 @@
+name: Daily Smart Calibration
+
+on:
+  schedule:
+    # Runs every 15 minutes from 00:00 to 00:59 UTC.
+    # This ensures it runs once per day, even with slight runner delays.
+    - cron: '*/15 0 * * *'
+  workflow_dispatch: # Allows manual runs
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check if already calibrated today
+        id: check_calibration
+        run: |
+          # Check if mapping.json exists and if lastCalibration is today
+          if [ -f mapping.json ]; then
+            LAST_CAL=$(jq -r '.lastCalibration' mapping.json 2>/dev/null || echo "none")
+            TODAY=$(date -u +%Y-%m-%d)
+            if [ "$LAST_CAL" == "$TODAY" ]; then
+              echo "✅ Already calibrated today. Skipping."
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Process and Generate Mapping
+        if: steps.check_calibration.outputs.skip == 'false'
+        id: process_map
+        run: |
+          # 1. Get UPDATE_TIME string from the database file
+          UPDATE_STR=$(jq -r '.update_time' database_new.json)
+          if [ -z "$UPDATE_STR" ]; then
+            echo "::error::Update time not found in database_new.json!"
+            exit 1
+          fi
+
+          # 2. Convert date from "DD.MM.YYYY" format to "YYYY-MM-DD"
+          # Handles potential extra text after the date
+          CLEAN_DATE=$(echo "$UPDATE_STR" | awk '{print $1}' | sed 's/\./-/g' | awk -F- '{print $3"-"$2"-"$1}')
+          TODAY=$(date -u +%Y-%m-%d)
+
+          # 3. Calculate the difference in days
+          # Using UTC for all date operations to avoid timezone issues
+          DIFF_SECONDS=$(( $(date -u -d "$TODAY" +%s) - $(date -u -d "$CLEAN_DATE" +%s) ))
+          DIFF_DAYS=$(( DIFF_SECONDS / 86400 ))
+
+          # 4. Determine the correct map based on the difference
+          if [ "$DIFF_DAYS" -eq 1 ]; then
+            # The schedule is from yesterday, so we need to offset it by +1 day.
+            # The mapping [6, 0, 1, 2, 3, 4, 5] effectively shifts Monday (day 0) to use the 7th schedule slot (index 6),
+            # Tuesday (day 1) to use the 1st slot (index 0), and so on.
+            FINAL_MAP="[6, 0, 1, 2, 3, 4, 5]"
+            STATUS="✅ Yesterday's schedule detected. Calibration applied (+1 day offset)."
+          else
+            # The schedule is from today, or it's older than one day. In either case, use the standard mapping.
+            FINAL_MAP="[0, 1, 2, 3, 4, 5, 6]"
+            STATUS="ℹ️ Schedule is up-to-date or too old. Using standard mapping."
+          fi
+          
+          # 5. Write the result to mapping.json
+          echo "{\"calibratedMap\": $FINAL_MAP, \"lastCalibration\": \"$TODAY\"}" > mapping.json
+          echo "status_message=$STATUS" >> $GITHUB_OUTPUT
+          echo "Generated mapping.json:"
+          cat mapping.json
+
+      - name: Commit Mapping File
+        if: steps.check_calibration.outputs.skip == 'false'
+        run: |
+          git config --global user.name "Calibration Bot"
+          git config --global user.email "actions-bot@github.com"
+          git add mapping.json
+          # Check if there are changes to commit to avoid empty commits
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: Daily schedule calibration" -m "${{ steps.process_map.outputs.status_message }}"
+            # Use force push to avoid conflicts if the repo was updated by the other action
+            git push --force
+          fi
