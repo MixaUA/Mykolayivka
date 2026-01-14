@@ -19,6 +19,7 @@ const weatherIcons = {
 
 // --- State ---
 let dayPrefixMap = [0, 1, 2, 3, 4, 5, 6]; // Default map, will be updated from mapping.json
+let lastCalibrationDate = null; // Stores the lastCalibration date from mapping.json
 let db = null, curQ = localStorage.getItem('selectedQueue');
 let dayIdx = 0, viewMode = 1;
 let weatherData = null, timerData = null;
@@ -29,9 +30,22 @@ async function loadConfig() {
     try {
         const response = await fetch('mapping.json?t=' + Date.now()); // ?t=... to prevent caching
         const config = await response.json();
+        
+        const mapChanged = JSON.stringify(config.calibratedMap) !== JSON.stringify(dayPrefixMap);
+
         if (config.calibratedMap) {
             dayPrefixMap = config.calibratedMap;
+            if (config.lastCalibration) {
+                lastCalibrationDate = config.lastCalibration;
+            }
             console.log("Map updated from server:", dayPrefixMap);
+
+            // If the map has changed and we already have data, re-render the UI instantly.
+            if (mapChanged && db && curQ) {
+                console.log("Map has changed, re-rendering UI instantly.");
+                calculateTimerData();
+                render();
+            }
         }
     } catch (e) {
         console.error("Error loading config, using default map.");
@@ -42,7 +56,7 @@ async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
     updateFlipTimer();
 
-    await loadConfig(); // Load mapping before fetching data
+    await loadConfig(); // Load mapping on initial page load
     await fetchData(); 
     renderGrid();
     if (curQ) selectQ(curQ); // Render only after getting data
@@ -56,6 +70,16 @@ async function init() {
 }
 
 async function fetchData() {
+    // Check if a new day has started since the last mapping was loaded
+    if (lastCalibrationDate) {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0]; // "YYYY-MM-DD"
+        if (todayStr > lastCalibrationDate) {
+            console.log("New day detected, reloading mapping.json...");
+            await loadConfig(); // This will also re-render if the map changes
+        }
+    }
+    
     const now = Date.now();
     try {
         const r = await fetch(`${API_URL}?t=${now}`);
