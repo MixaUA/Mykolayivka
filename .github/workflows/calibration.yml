@@ -17,72 +17,83 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up logging
+        run: |
+          mkdir -p logs
+          LNAME="logs/calibration_$(date +'%Y%m%d%H%M').log"
+          echo "LOG_FILE=$LNAME" >> $GITHUB_ENV
+          echo "=== Calibration run started at $(date -u) ===" > "$LNAME"
+
       - name: Check if already calibrated today
         id: check_calibration
         run: |
-          # Check if mapping.json exists and if lastCalibration is today
+          echo "--- Checking calibration status ---" >> ${{ env.LOG_FILE }}
           if [ -f mapping.json ]; then
             LAST_CAL=$(jq -r '.lastCalibration' mapping.json 2>/dev/null || echo "none")
             TODAY=$(date -u +%Y-%m-%d)
             if [ "$LAST_CAL" == "$TODAY" ]; then
-              echo "✅ Already calibrated today. Skipping."
+              echo "✅ Already calibrated today (Date: $TODAY). Skipping." >> ${{ env.LOG_FILE }}
               echo "skip=true" >> $GITHUB_OUTPUT
               exit 0
             fi
           fi
+          echo "ℹ️ Not calibrated today. Proceeding with calibration." >> ${{ env.LOG_FILE }}
           echo "skip=false" >> $GITHUB_OUTPUT
 
       - name: Process and Generate Mapping
         if: steps.check_calibration.outputs.skip == 'false'
         id: process_map
         run: |
-          # 1. Get UPDATE_TIME string from the database file
+          echo "--- Processing and Generating Mapping ---" >> ${{ env.LOG_FILE }}
           UPDATE_STR=$(jq -r '.update_time' database_new.json)
           if [ -z "$UPDATE_STR" ]; then
-            echo "::error::Update time not found in database_new.json!"
+            echo "❌ ERROR: Update time not found in database_new.json!" >> ${{ env.LOG_FILE }}
             exit 1
           fi
+          echo "Found update_time: $UPDATE_STR" >> ${{ env.LOG_FILE }}
 
-          # 2. Convert date from "DD.MM.YYYY" format to "YYYY-MM-DD"
-          # Handles potential extra text after the date
           CLEAN_DATE=$(echo "$UPDATE_STR" | awk '{print $1}' | sed 's/\./-/g' | awk -F- '{print $3"-"$2"-"$1}')
           TODAY=$(date -u +%Y-%m-%d)
+          echo "Cleaned DB date: $CLEAN_DATE, Today's date: $TODAY" >> ${{ env.LOG_FILE }}
 
-          # 3. Calculate the difference in days
-          # Using UTC for all date operations to avoid timezone issues
           DIFF_SECONDS=$(( $(date -u -d "$TODAY" +%s) - $(date -u -d "$CLEAN_DATE" +%s) ))
           DIFF_DAYS=$(( DIFF_SECONDS / 86400 ))
+          echo "Day difference: $DIFF_DAYS" >> ${{ env.LOG_FILE }}
 
-          # 4. Determine the correct map based on the difference
           if [ "$DIFF_DAYS" -eq 1 ]; then
-            # The schedule is from yesterday, so we need to offset it by +1 day.
-            # The mapping [6, 0, 1, 2, 3, 4, 5] effectively shifts Monday (day 0) to use the 7th schedule slot (index 6),
-            # Tuesday (day 1) to use the 1st slot (index 0), and so on.
             FINAL_MAP="[6, 0, 1, 2, 3, 4, 5]"
             STATUS="✅ Yesterday's schedule detected. Calibration applied (+1 day offset)."
           else
-            # The schedule is from today, or it's older than one day. In either case, use the standard mapping.
             FINAL_MAP="[0, 1, 2, 3, 4, 5, 6]"
             STATUS="ℹ️ Schedule is up-to-date or too old. Using standard mapping."
           fi
+          echo "$STATUS" >> ${{ env.LOG_FILE }}
           
-          # 5. Write the result to mapping.json
           echo "{\"calibratedMap\": $FINAL_MAP, \"lastCalibration\": \"$TODAY\"}" > mapping.json
           echo "status_message=$STATUS" >> $GITHUB_OUTPUT
-          echo "Generated mapping.json:"
-          cat mapping.json
+          echo "Generated mapping.json:" >> ${{ env.LOG_FILE }}
+          cat mapping.json >> ${{ env.LOG_FILE }}
 
       - name: Commit Mapping File
         if: steps.check_calibration.outputs.skip == 'false'
         run: |
+          echo "--- Committing changes ---" >> ${{ env.LOG_FILE }}
           git config --global user.name "Calibration Bot"
           git config --global user.email "actions-bot@github.com"
           git add mapping.json
-          # Check if there are changes to commit to avoid empty commits
+          
           if git diff --staged --quiet; then
-            echo "No changes to commit."
+            echo "No changes to commit." >> ${{ env.LOG_FILE }}
           else
             git commit -m "chore: Daily schedule calibration" -m "${{ steps.process_map.outputs.status_message }}"
-            # Use force push to avoid conflicts if the repo was updated by the other action
-            git push --force
+            git push
+            echo "Changes committed and pushed successfully." >> ${{ env.LOG_FILE }}
           fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: calibration-log-${{ github.run_id }}
+          path: ${{ env.LOG_FILE }}
+          retention-days: 7
