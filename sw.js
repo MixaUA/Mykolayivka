@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mykolaivka-app-cache-v18'; // Renamed for clarity and version bump
+const CACHE_NAME = 'mykolaivka-app-cache-v20'; // Renamed for clarity and version bump
 const API_CACHE_NAME = 'mykolaivka-api-cache-v1'; // Separate cache for API data
 const urlsToCache = [
   './',
