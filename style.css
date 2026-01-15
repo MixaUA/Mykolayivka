@@ -1,0 +1,699 @@
+:root {
+    --main: #333333;
+    --line: #e0e0e0;
+    --active: #333333;
+    --gray-bg: #ececec;
+    --flip-bg: #333333;
+    --flip-text: #fff;
+    --dark-coal: #2c2c2c;
+}
+
+body {
+    font-family: sans-serif;
+    color: var(--main);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.container {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--main);
+}
+
+.update-status {
+    font-size: 0.85rem;
+    color: #666;
+    margin: 5px 0 25px 0;
+    font-weight: 500;
+}
+
+h1 {
+    font-weight: 400;
+    font-size: 1.4rem;
+    margin-bottom: 25px;
+}
+
+.queue-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+}
+
+.btn-q {
+    background: #fff;
+    border: 2px solid var(--main);
+    padding: 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: var(--main);
+    font-weight: 700;
+}
+
+.tabs {
+    display: flex;
+    border-bottom: 2px solid var(--line);
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.tab {
+    flex: 1;
+    padding: 15px;
+    cursor: pointer;
+    opacity: 0.4;
+    border-bottom: 3px solid transparent;
+    font-size: 1.1rem;
+    background: none;
+    border: none;
+    color: var(--main);
+    outline: none;
+}
+
+.tab.active {
+    opacity: 1;
+    border-bottom: 3px solid var(--main);
+    font-weight: 700;
+}
+
+.weather-mini {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 5px;
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+.weather-mini svg {
+    width: 40px;
+    height: 40px;
+}
+
+.temp-range {
+    white-space: nowrap;
+}
+
+.slot {
+    display: flex;
+    justify-content: space-between;
+    padding: 18px 10px;
+    border-bottom: 1px solid var(--line);
+    width: 100%;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.slot.off {
+    background: var(--gray-bg);
+}
+
+.slot.on {
+    background: #ffffff;
+}
+
+.slot.current {
+    border-bottom-color: var(--line);
+}
+
+.time-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.time {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.slot-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dur {
+    font-size: 0.9rem;
+    color: #555;
+    background: transparent;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+    min-width: 80px;
+    text-align: center;
+}
+
+.calendar-btn {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    animation: pulse-shadow 2s ease-in-out infinite;
+}
+
+.calendar-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--main);
+}
+
+.calendar-btn.disabled {
+    opacity: 0.2;
+    pointer-events: none;
+    animation: none;
+}
+
+@keyframes pulse-shadow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    }
+
+    50% {
+        box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.2);
+    }
+}
+
+.btn-change {
+    width: 100%;
+    margin-top: 30px;
+    background: var(--main);
+    color: #fff;
+    border: none;
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.loader-clock {
+    width: 24px;
+    height: 24px;
+    stroke: var(--active);
+}
+
+.no-actual {
+    margin-top: 40px;
+    opacity: 0.5;
+    font-style: italic;
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.separator {
+    width: 100%;
+    height: 1px;
+    background: var(--line);
+    margin: 30px 0;
+}
+
+.wiki-box {
+    text-align: left;
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.5;
+    padding: 0 10px;
+}
+
+.wiki-box b {
+    color: var(--main);
+}
+
+.footer {
+    margin-top: 50px;
+    font-size: 0.75rem;
+    color: var(--main);
+    padding-bottom: 20px;
+}
+
+.update-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    z-index: 1000;
+}
+
+.update-bar button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* Weather Icons Animations */
+@keyframes am-weather-cloud-1 {
+
+    0%,
+    100% {
+        transform: translate(-5px, 0);
+    }
+
+    50% {
+        transform: translate(10px, 0);
+    }
+}
+
+@keyframes am-weather-cloud-2 {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(2px, 0);
+    }
+}
+
+@keyframes am-weather-sun {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes am-weather-sun-shiny {
+
+    0%,
+    100% {
+        stroke-dasharray: 3px 10px;
+        stroke-dashoffset: 0;
+    }
+
+    50% {
+        stroke-dasharray: 0.1px 10px;
+        stroke-dashoffset: -1px;
+    }
+}
+
+@keyframes am-weather-rain {
+    from {
+        stroke-dashoffset: 0;
+    }
+
+    to {
+        stroke-dashoffset: -100;
+    }
+}
+
+@keyframes am-weather-snow {
+    0% {
+        transform: translateX(0) translateY(0);
+    }
+
+    33.33% {
+        transform: translateX(-1.2px) translateY(2px);
+    }
+
+    66.66% {
+        transform: translateX(1.4px) translateY(4px);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(-1.6px) translateY(6px);
+        opacity: 0;
+    }
+}
+
+@keyframes am-weather-snow-reverse {
+    0% {
+        transform: translateX(0) translateY(0);
+    }
+
+    33.33% {
+        transform: translateX(1.2px) translateY(2px);
+    }
+
+    66.66% {
+        transform: translateX(-1.4px) translateY(4px);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(1.6px) translateY(6px);
+        opacity: 0;
+    }
+}
+
+.am-weather-cloud-1 {
+    animation: am-weather-cloud-1 7s linear infinite;
+}
+
+.am-weather-cloud-2 {
+    animation: am-weather-cloud-2 3s linear infinite;
+}
+
+.am-weather-sun {
+    animation: am-weather-sun 9s linear infinite;
+}
+
+.am-weather-sun-shiny line {
+    animation: am-weather-sun-shiny 2s linear infinite;
+}
+
+.am-weather-rain-1 {
+    animation: am-weather-rain 8s linear infinite;
+}
+
+.am-weather-rain-2 {
+    animation: am-weather-rain 8s linear infinite;
+    animation-delay: 0.25s;
+}
+
+.am-weather-snow-1 {
+    animation: am-weather-snow 2s linear infinite;
+}
+
+.am-weather-snow-2 {
+    animation: am-weather-snow 2s linear infinite;
+    animation-delay: 1.2s;
+}
+
+.am-weather-snow-3 {
+    animation: am-weather-snow-reverse 2s linear infinite;
+}
+
+.am-weather-easing-ease-in-out {
+    animation-timing-function: ease-in-out;
+}
+
+/* Flip Timer Styles */
+.timer-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.timer-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    color: #777;
+    font-weight: bold;
+}
+
+.flip-clock {
+    display: flex;
+    gap: 8px;
+}
+
+.flip-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.flip-pair {
+    display: flex;
+    background: var(--flip-bg);
+    padding: 8px 10px;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    min-width: 45px;
+    box-sizing: border-box;
+    justify-content: center;
+    gap: 1px;
+    position: relative;
+}
+
+.flip-pair::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background: rgba(0,0,0,0.2);
+}
+
+.roll-digit-container {
+    height: 52px;
+    width: 18px;
+    overflow: hidden;
+    position: relative;
+}
+
+.roll-digit-strip {
+    position: absolute;
+    width: 100%;
+    top: 0;
+    left: 0;
+    transition: transform 0.5s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+    display: flex;
+    flex-direction: column;
+}
+
+.roll-num {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--flip-text);
+}
+
+.unit-desc {
+    font-size: 0.65rem;
+    margin-top: 4px;
+    opacity: 0.6;
+}
+
+/* New Logo Styles */
+.logo-container { 
+    display: flex; 
+    justify-content: center; 
+    width: 100%; 
+    overflow: hidden; 
+    margin: 10px 0;
+}
+.logo-container svg { 
+    width: 280px; 
+    height: 80px; 
+    overflow: visible; 
+}
+
+:is(#back2089, #front2089) { 
+    fill: none; 
+    stroke-width: 3; 
+    stroke-linecap: round; 
+    stroke-linejoin: round; 
+} 
+#back2089 { 
+    stroke: #cccccc; 
+    opacity: 0.3; 
+} 
+#front2089 { 
+    stroke: var(--active); 
+    stroke-dasharray: 260; 
+    stroke-dashoffset: 0; 
+    animation: dash_6821 1.4s linear infinite; 
+} 
+        
+@keyframes dash_6821 { 
+    0% { stroke-dashoffset: 520; } 
+    100% { stroke-dashoffset: 0; } 
+}
+
+.index-group { 
+    transform-box: fill-box; 
+    transform-origin: left center; 
+    animation: group_behavior 30.8s linear infinite; 
+}
+
+@keyframes group_behavior {
+    /* РІЗКЕ ЗРОСТАННЯ (0% - 63.63%) */
+    0%, 27.27% { transform: scale(0.6) translateX(0); } 
+    27.28%, 31.81% { transform: scale(0.7); } 
+    31.82%, 36.36% { transform: scale(0.8); } 
+    36.37%, 40.90% { transform: scale(0.9); } 
+    40.91%, 45.45% { transform: scale(1.0); } 
+    45.46%, 50.00% { transform: scale(1.1); } 
+    50.01%, 54.54% { transform: scale(1.2); } 
+    54.55%, 59.09% { transform: scale(1.3); } 
+    59.10%, 63.63% { transform: scale(1.4) translateX(0); } 
+
+    /* ПЛАВНИЙ ВІДСКОК З ПРОГРЕСІЄЮ (63.64% - 95.44%) */
+    64.70% { transform: scale(1.4) translateX(5px); }
+    68.17% { transform: scale(1.4) translateX(0); }
+    69.20% { transform: scale(1.4) translateX(10px); }
+    72.71% { transform: scale(1.4) translateX(0); }
+    73.70% { transform: scale(1.4) translateX(15px); }
+    77.26% { transform: scale(1.4) translateX(0); }
+    78.30% { transform: scale(1.4) translateX(20px); }
+    81.80% { transform: scale(1.4) translateX(0); }
+    82.80% { transform: scale(1.4) translateX(25px); }
+    86.35% { transform: scale(1.4) translateX(0); }
+    87.30% { transform: scale(1.4) translateX(35px); }
+    90.89% { transform: scale(1.4) translateX(0); }
+    91.90% { transform: scale(1.4) translateX(45px); }
+    95.44% { transform: scale(1.4) translateX(0); }
+
+    /* ФІНАЛЬНИЙ ПЛАВНИЙ ВИЛІТ */
+    95.45% { transform: scale(1.4) translateX(0); opacity: 1; }
+    99%, 100% { transform: scale(1.4) translateX(450px); opacity: 0; }
+}
+
+.d { 
+    opacity: 0; 
+    font-family: sans-serif; 
+    font-weight: 400; 
+    font-size: 20px; 
+    fill: var(--active); 
+}
+
+.n5 { animation: move1 30.8s step-end infinite; }
+.n4 { animation: move2 30.8s step-end infinite; }
+.n3 { animation: move3 30.8s step-end infinite; }
+.n2 { animation: move4 30.8s step-end infinite; }
+.n1 { animation: move5 30.8s step-end infinite; }
+
+@keyframes move1 { 4.545% { opacity: 1; transform: translateX(0); } 9.09% { transform: translateX(14px); } 13.63% { transform: translateX(28px); } 18.18% { transform: translateX(42px); } 22.72% { transform: translateX(56px); } 100% { opacity: 1; transform: translateX(56px); } }
+@keyframes move2 { 9.09% { opacity: 1; transform: translateX(0); } 13.63% { transform: translateX(14px); } 18.18% { transform: translateX(28px); } 22.72% { transform: translateX(42px); } 100% { opacity: 1; transform: translateX(42px); } }
+@keyframes move3 { 13.63% { opacity: 1; transform: translateX(0); } 18.18% { transform: translateX(14px); } 22.72% { transform: translateX(28px); } 100% { opacity: 1; transform: translateX(28px); } }
+@keyframes move4 { 18.18% { opacity: 1; transform: translateX(0); } 22.72% { transform: translateX(14px); } 100% { opacity: 1; transform: translateX(14px); } }
+@keyframes move5 { 22.72% { opacity: 1; transform: translateX(0); } 100% { opacity: 1; transform: translateX(0); } }
+
+/* Grid view styles */
+.hours-grid { 
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 8px; 
+    margin: 10px 0 25px 0; 
+}
+.hours-grid > .no-actual { 
+    grid-column: 1 / -1; 
+}
+.hour-cell { 
+    padding: 12px 2px; 
+    border-radius: 8px; 
+    border: 2px solid var(--line); 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    position: relative; 
+}
+.hour-cell.off { 
+    background: var(--dark-coal); 
+    color: white; 
+    border-color: #1a1a1a; 
+}
+.hour-cell.current { 
+    border-color: #4CAF50; 
+    border-width: 3px; 
+    transform: scale(1.03); 
+    z-index: 1; 
+}
+.hour-time { 
+    font-size: 0.75rem; 
+    font-weight: 600; 
+    line-height: 1.2; 
+    margin-bottom: 4px; 
+}
+.current-dot { 
+    width: 6px; 
+    height: 6px; 
+    background: #4CAF50; 
+    border-radius: 50%; 
+    position: absolute; 
+    top: 4px; 
+    right: 4px; 
+    animation: pulse-dot 2s infinite; 
+}
+@keyframes pulse-dot { 
+    0%, 100% { opacity: 1; } 
+    50% { opacity: 0.3; } 
+}
+.icon-pwr { 
+    width: 18px; 
+    height: 18px; 
+}
+
+/* Modal styles */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center;
+    z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s; backdrop-filter: blur(4px);
+}
+.modal-overlay.active { opacity: 1; visibility: visible; }
+
+.modal-content {
+    background: #fff; 
+    padding: 24px; 
+    border-radius: 10px;
+    max-width: 320px; 
+    width: 85%;
+    text-align: center; 
+    transform: scale(0.9); 
+    transition: 0.3s;
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+.modal-overlay.active .modal-content { transform: scale(1); }
+
+.modal-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+
+.btn-modal { 
+    padding: 15px;
+    border-radius: 10px;
+    font-weight: 700; 
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-go { 
+    background: var(--main); 
+    color: #fff;
+    border: none;
+}
+
+.btn-exit { 
+    background: #fff; 
+    color: var(--main);
+    border: 2px solid var(--main);
+}
+
+/* Calendar button state */
+.no-anim { animation: none !important; opacity: 0.7; }

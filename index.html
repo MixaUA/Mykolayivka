@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Графік Світла - Миколаївка</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="ico/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="ico/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="ico/favicon-16x16.png">
+    <link rel="manifest" href="site.webmanifest">
+    <meta name="theme-color" content="#f0f2f5">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <div class="logo-container">
+        <svg viewBox="0 0 240 64">
+            <polyline points="0,45 38,45 44,33 50,45 57,45 62,55 71,9 80,63 84,45 97,45 103,40 110,45 130,45" id="back2089"/>
+            <polyline points="0,45 38,45 44,33 50,45 57,45 62,55 71,9 80,63 84,45 97,45 103,40 110,45 130,45" id="front2089"/>
+            
+            <g class="index-group">
+                <text x="135" y="49" class="d n1">4</text>
+                <text x="135" y="49" class="d n2">1</text>
+                <text x="135" y="49" class="d n3">8</text>
+                <text x="135" y="49" class="d n4">5</text>
+                <text x="135" y="49" class="d n5">4</text>
+            </g>
+        </svg>
+    </div>
+    <h2>Графік відключень</h2>
+    <div class="update-status" id="status">Завантаження...</div>
+    <h1 id="title">Оберіть чергу</h1>
+    <div id="timer-container"></div>
+    <div id="grid" class="queue-grid"></div>
+    <div id="box" class="hidden">
+        <div class="tabs">
+            <button id="tabL" class="tab active" onclick="setDay(0)">
+                Сьогодні
+                <div class="weather-mini" id="weatherToday"></div>
+            </button>
+            <button id="tabR" class="tab" onclick="setDay(1)">
+                Завтра
+                <div class="weather-mini" id="weatherTomorrow"></div>
+            </button>
+        </div>
+        <div id="content-list"></div>
+        <div id="content-visual" class="hidden">
+            <div class="hours-grid" id="hours-grid"></div>
+        </div>
+
+        <div class="tabs" style="margin-top: 20px;">
+            <button id="view1" class="tab active" onclick="setView(1)">Список</button>
+            <button id="view2" class="tab" onclick="setView(2)">Сітка</button>
+        </div>
+        <button class="btn-change" onclick="resetView()">Змінити чергу</button>
+        <div class="separator"></div>
+        <div class="wiki-box">
+            <p><b>Довідка</b></p>
+            <p><b>Іконка календаря:</b> Після натискання на іконку буде створено подію у вашому Google Календарі (на відключення або наявність світла) з автоматично заповненою назвою та часом. Час нагадування перед подією буде встановлено згідно з вашими стандартними налаштуваннями календаря.</p>
+            <p><b>Погода:</b> Інформація про погоду відображається виключно для Миколаївки. Графіки відключень можуть стосуватися й інших населених пунктів області.</p>
+            <p><b>Важливо:</b> Даний графік не є офіційним джерелом інформації. Дані взяті з відкритих джерел і можуть бути неточними.</p>
+        </div>    </div>
+    <div class="footer">&copy; <span id="year"></span> Mykhailo Anisimov</div>
+</div>
+
+<script src="script.js" defer></script>
+</body>
+</html>

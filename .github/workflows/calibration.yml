@@ -1,0 +1,37 @@
+name: Daily Smart Calibration
+
+on:
+  schedule:
+    # 22:00 UTC — це 00:00 за Києвом. Бот працюватиме з 00:00 до 00:45 кожні 15 хв.
+    - cron: '*/15 22 * * *'
+  workflow_dispatch:
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Встановлюємо часовий пояс Києва, щоб скрипт правильно визначав "сьогодні"
+      - name: Set Timezone
+        run: sudo timedatectl set-timezone Europe/Kiev
+
+      - name: Run Calibration Script
+        run: python scripts/scheduler.py --calibrate
+
+      - name: Commit and Push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(bot): Оновлення калібрування (авто)"
+          file_pattern: "mapping.json database.json"
+          commit_user_name: "Calibration Bot"
+          commit_user_email: "bot@github.com"
