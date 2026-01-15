@@ -31,12 +31,14 @@ jobs:
           git config --global user.name "Calibration Bot"
           git config --global user.email "bot@github.com"
           
-          # Check if the mapping file has been modified by the script
-          if ! git diff --staged --quiet mapping.json && ! git diff --quiet mapping.json; then
-            echo "mapping.json changed. Committing..."
-            git add mapping.json
-            git commit -m "feat: Auto-calibrate schedule map" -m "Automated daily calibration based on database update time."
-            git push
+          # Додаємо всі зміни у відстеження
+          git add .
+
+          # Перевіряємо, чи є підготовлені зміни
+          if git diff --staged --quiet; then
+            echo "Змін для коміту не виявлено."
           else
-            echo "No changes to mapping.json detected."
+            echo "Виявлено зміни. Роблю коміт..."
+            git commit -m "chore: Оновлення даних калібрування" -m "Автоматичне калібрування графіка або оновлення дати перевірки."
+            git push
           fi
