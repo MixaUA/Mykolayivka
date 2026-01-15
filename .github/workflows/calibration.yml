@@ -24,11 +24,9 @@ jobs:
 
       - name: Run Calibration Script
         id: run_script
-        working-directory: ./Mykolaivka + pogoda
         run: python scripts/scheduler.py
 
       - name: Commit changes
-        working-directory: ./Mykolaivka + pogoda
         run: |
           git config --global user.name "Calibration Bot"
           git config --global user.email "bot@github.com"
