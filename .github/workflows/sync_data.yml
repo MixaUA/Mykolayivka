@@ -2,69 +2,42 @@ name: Sync & Build Database
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Кожні 30 хвилин
-  workflow_dispatch:      # Ручний запуск
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: scheduler-data-sync
+  cancel-in-progress: false
 
 jobs:
   sync-and-build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Download new source database
+      - name: Download data
         id: download
         run: |
           URL="https://raw.githubusercontent.com/MixaUA/Mykolayivka/main/database_new.json"
-          echo "Завантажую дані з $URL"
-          
-          # Завантажуємо у тимчасовий файл в правильній директорії
           curl -s -L "$URL" -o scripts/database_new.json.tmp
-          
-          if [ ! -s scripts/database_new.json.tmp ]; then
-            echo "Помилка: Завантажений файл порожній. Зупиняю роботу."
-            exit 1
-          fi
-          
-          # Порівнюємо тимчасовий файл з існуючим
-          if cmp -s scripts/database_new.json scripts/database_new.json.tmp; then
-            echo "Змін у вихідних даних не виявлено."
+          if [ ! -s scripts/database_new.json.tmp ] || cmp -s scripts/database_new.json scripts/database_new.json.tmp; then
             echo "changed=false" >> $GITHUB_OUTPUT
-            rm scripts/database_new.json.tmp
+            rm -f scripts/database_new.json.tmp
           else
-            echo "Джерело даних змінилося. Оновлюю файл."
             echo "changed=true" >> $GITHUB_OUTPUT
             mv scripts/database_new.json.tmp scripts/database_new.json
           fi
-
-      - name: Commit and Push source data
-        if: steps.download.outputs.changed == 'true'
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "feat(data): Оновлення сирих даних (авто)"
-          file_pattern: "scripts/database_new.json"
-          commit_user_name: "Data Sync Bot"
-          commit_user_email: "bot@github.com"
-      
-      - name: Run Build Script
+      - name: Run Build
         if: steps.download.outputs.changed == 'true'
         run: python scripts/scheduler.py --build
-
-      - name: Commit and Push final database
-        # Цей крок виконується, навіть якщо зміни в сирих даних не було, 
-        # бо нічне калібрування могло змінити мапінг, що вимагає перебудови.
-        # Тому прибираємо 'if' і покладаємось на логіку самого auto-commit.
+      - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "feat(bot): Оновлення фінальної бази даних (авто)"
-          file_pattern: "database.json"
-          commit_user_name: "Data Sync Bot"
-          commit_user_email: "bot@github.com"
+          commit_message: "feat(data): оновлення бази"
+          file_pattern: "scripts/database_new.json database.json"
