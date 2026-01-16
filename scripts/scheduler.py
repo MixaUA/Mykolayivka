@@ -35,7 +35,7 @@ def save_json(data, path):
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"Помилка запису в {path}: {e}")
+        print(f"Помилка запису v {path}: {e}")
 
 def parse_date(date_str):
     try:
@@ -96,7 +96,8 @@ def main():
     kyiv_now = datetime.datetime.now(TZ_KYIV)
     today = kyiv_now.date()
     
-    print(f"--- Запуск: {kyiv_now.strftime('%Y-%m-%d %H:%M:%S')} (Kyiv) | Режим: {mode} ---")
+    print(f"--- Запуск скрипту: {kyiv_now.strftime('%Y-%m-%d %H:%M:%S')} (Kyiv) ---")
+    print(f"Режим роботи: {mode}")
 
     db_raw = load_json(DB_RAW_FILE)
     if not db_raw: sys.exit(1)
@@ -105,24 +106,39 @@ def main():
 
     if mode == "--calibrate":
         if mapping_data.get('lastCalibration') == today.isoformat():
-            print("Сьогодні вже калібрували. Пропускаю.")
-        else:
-            file_date = parse_date(db_raw.get('update_time', ''))
-            if file_date and (today - file_date).days == 1:
-                last_idx = get_last_queue_idx(db_raw)
-                if last_idx is not None:
-                    offset = (last_idx - today.weekday() + 7) % 7
-                    new_map = [(i + offset) % 7 for i in range(7)]
-                    print(f"Калібрування: last_idx={last_idx}, offset={offset}")
-                    if mapping_data.get('calibratedMap') != new_map:
-                        print(f"Карта оновлена: {mapping_data.get('calibratedMap')} -> {new_map}")
-                        mapping_data['calibratedMap'] = new_map
+            print(f"✅ Сьогодні ({today}) калібрування вже успішно виконано. Вихід.")
+            return # ЗУПИНЯЄМО РОБОТУ, ЩОБ НЕ ЗБИРАТИ БАЗУ ВХОЛОСТУ
+
+        file_date = parse_date(db_raw.get('update_time', ''))
+        print(f"📅 Дата з файлу: {file_date}, Сьогодні: {today}")
+
+        if file_date and (today - file_date).days == 1:
+            print("🚀 Файл актуальний (вчорашній). Аналізую зсув...")
+            last_idx = get_last_queue_idx(db_raw)
+            if last_idx is not None:
+                print(f"🔍 Виявлено індекс на сьогодні: {last_idx} ({P_LIST[last_idx]})")
+                offset = (last_idx - today.weekday() + 7) % 7
+                new_map = [(i + offset) % 7 for i in range(7)]
+                
+                if mapping_data.get('calibratedMap') == new_map:
+                    print("🛡️ Запобіжник: Розрахована карта збігається з існуючою. Карта не змінилася.")
+                else:
+                    print(f"🔄 Карта змінилася! Оновлюю: {mapping_data.get('calibratedMap')} -> {new_map}")
+                    mapping_data['calibratedMap'] = new_map
+                
                 mapping_data['lastCalibration'] = today.isoformat()
                 save_json(mapping_data, MAPPING_FILE)
+                print("✅ Налаштування калібрування збережено.")
+            else:
+                print("⚠️ Помилка: Не вдалося знайти індекси в сирих даних.")
+        else:
+            print("ℹ️ Файл не є вчорашнім. Калібрування пропущено.")
 
+    # Ця частина виконується лише при першому калібруванні за добу або в режимі --build
+    print("🛠️ Розпочинаю фінальну збірку бази...")
     final_data = build_final(db_raw, mapping_data["calibratedMap"])
     save_json(final_data, DB_FINAL_FILE)
-    print(f"Збірка завершена успішно. Карта: {mapping_data['calibratedMap']}")
+    print(f"✨ Збірка завершена успішно. Карта: {mapping_data['calibratedMap']}")
 
 if __name__ == "__main__":
     main()
