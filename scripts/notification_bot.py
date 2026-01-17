@@ -15,7 +15,7 @@ def escape_markdown_v2(text: str) -> str:
     # Escape other special characters
     # Note: '-' must be escaped or placed at the start/end of the character class
     # to avoid being interpreted as a range.
-    escape_chars_pattern = r"([_*[\\]()~`>#+=\-|{{}}.!])"
+    escape_chars_pattern = r"([_*[\\]()~`>#+\-=|{{}}.!])"
     return re.sub(escape_chars_pattern, r'\\\1', text)
 
 def calculate_duration(start_s, end_s):
