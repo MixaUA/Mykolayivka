@@ -32,7 +32,7 @@ def show_message(action, target_time, duration, next_action, next_start, next_en
 
 def run_bot():
     # Читаємо з database.json
-    json_file_path = 'database.json' # Повернуто до database.json
+    json_file_path = 'test_database.json' # Повернуто до database.json
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
