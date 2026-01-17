@@ -7,14 +7,15 @@ import re # For Markdown V2 escaping
 # --- Helper Functions ---
 def escape_markdown_v2(text: str) -> str:
     """Escapes characters in text that have a special meaning in MarkdownV2."""
-    # List of characters that need to be escaped in MarkdownV2
+    # Official list of characters to be escaped in MarkdownV2:
     # _, *, [, ], (, ), ~, `, >, #, +, -, =, |, {, }, ., !
-    # The order matters: escape backslash itself first
-    # Also need to escape `.` and `!`
-    # Regex: r"([_*[\\\]()~`>#+\-=|{}"!])"
-    # Added `.` and `!`
-    escape_chars = r"([_*[\\\]()~`>#+\-=|{}"!])"
-    return re.sub(escape_chars, r'\\1', text)
+    # And the backslash itself: \
+    
+    # Escape backslash first to prevent issues with other escapes
+    text = text.replace('\\', '\\\\')
+    # Escape other special characters
+    escape_chars_pattern = r"([_*[\\]()~`>#+\-=|"{}!])"
+    return re.sub(escape_chars_pattern, r'\\\1', text)
 
 def calculate_duration(start_s, end_s):
     """Рахує тривалість між двома мітками часу."""
