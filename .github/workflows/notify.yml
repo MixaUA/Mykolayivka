@@ -1,9 +1,9 @@
 name: Live Notification Bot
 
 on:
-  workflow_dispatch: # Дозволяє запуск вручну та через API
-  # Ми НЕ стачимо тут schedule, щоб не було розбіжностей у часі, 
-  # бо цим буде керувати Cron-job.org
+  workflow_dispatch:
+  repository_dispatch:
+    types: [manual-trigger]
 
 jobs:
   send-notification:
