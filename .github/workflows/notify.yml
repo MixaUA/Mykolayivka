@@ -3,7 +3,7 @@ name: Live Notification Bot
 on:
   workflow_dispatch:
   repository_dispatch:
-    types: [manual-trigger]
+    types: [6.2-bot]
 
 jobs:
   send-notification:
