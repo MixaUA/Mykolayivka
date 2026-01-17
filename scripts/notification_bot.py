@@ -5,20 +5,17 @@ import requests
 import re
 import random
 
-# --- Helper Functions (БЕЗ ЗМІН) ---
 def escape_markdown_v2(text: str) -> str:
     escape_chars = r'_*[]()~`>#+-=|{}.!'
     text = text.replace('\\', '\\\\')
     return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
 
 def format_time_display(total_minutes):
-    """Конвертує абсолютні хвилини у формат HH:MM (як на сайті)"""
     h = (int(total_minutes) // 60) % 24
     m = int(total_minutes) % 60
     return f"{h:02d}:{m:02d}"
 
 def calculate_duration_from_min(start_m, end_m):
-    """Рахує тривалість на основі хвилин"""
     total_minutes = int(end_m - start_m)
     hours = total_minutes // 60
     minutes = total_minutes % 60
@@ -42,20 +39,29 @@ def get_random_tip(event_type):
 def send_telegram_message(message_text):
     bot_token = os.environ.get('TELEGRAM_TOKEN')
     chat_id = os.environ.get('TELEGRAM_CHAT_ID')
-    if not bot_token or not chat_id: return
+    if not bot_token or not chat_id:
+        print("Помилка: Токен або ID чату не знайдені в Secrets.")
+        return
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {'chat_id': chat_id, 'text': message_text, 'parse_mode': 'MarkdownV2'}
     try:
         response = requests.post(url, json=payload)
         response.raise_for_status()
-    except: pass
+        print("Повідомлення успішно надіслано в Telegram.")
+    except Exception as e:
+        print(f"Помилка відправки в ТГ: {e}")
 
 def run_bot():
+    print(f"--- Запуск бота: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
+    
     json_file_path = 'database.json'
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-    except: return
+        print("Файл database.json успішно завантажено.")
+    except Exception as e:
+        print(f"Помилка завантаження файлу: {e}")
+        return
 
     now = datetime.now()
     now_m = now.hour * 60 + now.minute
@@ -65,7 +71,8 @@ def run_bot():
     days_ukr_cap = {0: "Понеділок", 1: "Вівторок", 2: "Середа", 3: "Четвер", 4: "П'ятниця", 5: "Субота", 6: "Неділя"}
     today_dow = now.weekday()
     
-    # --- ХІРУРГІЧНА ВСТАВКА: МАТЕМАТИЧНА СКЛЕЙКА (ЯК НА САЙТІ) ---
+    print(f"Поточний час: {current_time_str}, День: {days_ukr[today_dow]}")
+
     all_events = []
     for day_offset in range(2):
         target_dow = (today_dow + day_offset) % 7
@@ -80,44 +87,56 @@ def run_bot():
             end_total = (1440 if (e_h == 0 and e_m == 0) or e_h == 24 else e_h * 60 + e_m) + (day_offset * 1440)
             all_events.append({'start': start_total, 'end': end_total})
 
-    if not all_events: return
+    if not all_events:
+        print("Вихід: Графік відключень порожній.")
+        return
 
-    # Склеювання
     all_events.sort(key=lambda x: x['start'])
     merged = []
-    if all_events:
-        curr = all_events[0]
-        for next_ev in all_events[1:]:
-            if curr['end'] == next_ev['start']: curr['end'] = next_ev['end']
-            else:
-                merged.append(curr); curr = next_ev
-        merged.append(curr)
+    curr = all_events[0]
+    for next_ev in all_events[1:]:
+        if curr['end'] == next_ev['start']:
+            curr['end'] = next_ev['end']
+        else:
+            merged.append(curr)
+            curr = next_ev
+    merged.append(curr)
+    
+    print(f"Виявлено {len(merged)} склеєних інтервалів відключень.")
 
-    # Статистика (тільки на поточну добу)
     past_count, past_hours, future_count, future_hours = 0, 0, 0, 0
     for ev in merged:
         if ev['start'] < 1440:
             actual_end = min(ev['end'], 1440)
             duration = (actual_end - ev['start']) / 60
             if actual_end <= now_m:
-                past_count += 1; past_hours += int(duration)
+                past_count += 1
+                past_hours += int(duration)
             else:
-                future_count += 1; future_hours += int(duration)
+                future_count += 1
+                future_hours += int(duration)
 
-    # Перевірка на події (20-30 хв вікно)
+    notified = False
     for ev in merged:
-        # Чекаємо ВВІМКНЕННЯ (ми вже всередині)
         if ev['start'] <= now_m < ev['end']:
             diff = ev['end'] - now_m
+            print(f"Поточний стан: ВІДКЛЮЧЕННЯ. До ввімкнення: {int(diff)} хв.")
             if 0 < diff <= 30:
+                print("Умова 30 хв виконана. Надсилаю сповіщення про ВВІМКНЕННЯ.")
                 send_notif(current_time_str, days_ukr_cap[today_dow], ev['start'], ev['end'], diff, past_count, past_hours, future_count, future_hours, "on")
+                notified = True
                 break
-        # Чекаємо ВИМКНЕННЯ (подія попереду)
         elif ev['start'] > now_m:
             diff = ev['start'] - now_m
+            print(f"Поточний стан: СВІТЛО Є. До наступного вимкнення: {int(diff)} хв.")
             if 0 < diff <= 30:
+                print("Умова 30 хв виконана. Надсилаю сповіщення про ВИМКНЕННЯ.")
                 send_notif(current_time_str, days_ukr_cap[today_dow], ev['start'], ev['end'], diff, past_count, past_hours, future_count, future_hours, "off")
+                notified = True
                 break
+
+    if not notified:
+        print("Вихід: Активних подій у вікні 30 хвилин не знайдено.")
 
 def send_notif(cur_time, day, start, end, diff, p_c, p_h, f_c, f_h, type):
     icon = get_time_icon(start if type == "off" else end)
