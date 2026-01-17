@@ -1,5 +1,20 @@
 import json
 from datetime import datetime, timedelta
+import os
+import requests
+import re # For Markdown V2 escaping
+
+# --- Helper Functions ---
+def escape_markdown_v2(text: str) -> str:
+    """Escapes characters in text that have a special meaning in MarkdownV2."""
+    # List of characters that need to be escaped in MarkdownV2
+    # _, *, [, ], (, ), ~, `, >, #, +, -, =, |, {, }, ., !
+    # The order matters: escape backslash itself first
+    # Also need to escape `.` and `!`
+    # Regex: r"([_*\[\]\(\)~`>#\+\-=\|\{\}\.!])"
+    # Added `.` and `!`
+    escape_chars = r"([_*\[\]\(\)~`>#\+\-=\|\{\}\.!])"
+    return re.sub(escape_chars, r'\\1', text)
 
 def calculate_duration(start_s, end_s):
     """Рахує тривалість між двома мітками часу."""
@@ -10,62 +25,119 @@ def calculate_duration(start_s, end_s):
     if end_s == "24:00": t2 += timedelta(minutes=1)
     
     duration = t2 - t1
-    hours = duration.seconds // 3600
-    minutes = (duration.seconds % 3600) // 60
-    if minutes > 0:
-        return f"{hours}.{minutes:02d} годин"
-    return f"{hours} годин"
+    total_minutes = int(duration.total_seconds() / 60)
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+
+    if hours > 0 and minutes > 0:
+        return f"{hours} год\. {minutes} хв\."
+    elif hours > 0:
+        return f"{hours} год\."
+    elif minutes > 0:
+        return f"{minutes} хв\."
+    return "менше хвилини"
+
+def send_telegram_message(message_text):
+    """Надсилає повідомлення в Telegram канал."""
+    bot_token = os.environ.get('TELEGRAM_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+
+    if not bot_token or not chat_id:
+        print("Помилка: Змінні оточення TELEGRAM_TOKEN або TELEGRAM_CHAT_ID не встановлені.")
+        return
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        'chat_id': chat_id,
+        'text': message_text,
+        'parse_mode': 'MarkdownV2'
+    }
+
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status() # Піднімає HTTPError для поганих відповідей (4xx або 5xx)
+        print(f"Повідомлення успішно відправлено в Telegram. Відповідь: {response.json()}")
+    except requests.exceptions.RequestException as e:
+        print(f"Помилка відправки повідомлення в Telegram: {e}")
+        if response is not None:
+            print(f"Відповідь Telegram API: {response.text}")
+
 
 def run_bot():
-    with open('database.json', 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    # Тимчасово читаємо з test_database.json для тестування
+    json_file_path = 'test_database.json'
+    try:
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print(f"Помилка: Файл {json_file_path} не знайдено. Переконайтесь, що він існує.")
+        return
+    except json.JSONDecodeError:
+        print(f"Помилка: Не вдалося розпарсити JSON з файлу {json_file_path}. Перевірте його цілісність.")
+        return
 
     now = datetime.now()
     current_time_dt = datetime.strptime(now.strftime("%H:%M"), "%H:%M")
     
     days_ukr = {0: "понеділок", 1: "вівторок", 2: "середа", 3: "четвер", 4: "п'ятниця", 5: "субота", 6: "неділя"}
     weekday = days_ukr[now.weekday()]
-    intervals = data.get("6.2", {}).get(weekday, [])
+    
+    # Виправлення: Правильний шлях до черги
+    queue_data = data.get('queues', {}).get('6.2', {})
+    intervals = queue_data.get(weekday, [])
+
+    if not intervals:
+        print(f"ℹ️ {now.strftime('%H:%M')}: Не знайдено інтервалів для черги 6.2 на {weekday}. Вихід.")
+        return
 
     found_event = False
     
     for i, interval in enumerate(intervals):
         start_s, end_s = interval.split('-')
         start_dt = datetime.strptime(start_s, "%H:%M")
-        end_dt = datetime.strptime(end_s.replace("24:00", "23:59"), "%H:%M")
-
-        # 1. Ми всередині відключення (чекаємо ВВІМКНЕННЯ)
+        end_dt = datetime.strptime(end_s.replace("24:00", "23:59"), "%H:%M") # "24:00" для розрахунків
+        
+        # Перевірка: чи ми знаходимось всередині інтервалу відключення (чекаємо ВВІМКНЕННЯ)
         if start_dt <= current_time_dt <= end_dt:
-            if 0 < diff <= 30:
-                next_idx = (i + 1) % len(intervals)
-                n_start, n_end = intervals[next_idx].split('-')
-                n_dur = calculate_duration(n_start, n_end)
-                show_message("ввімкнення", end_s, calculate_duration(start_s, end_s), "вимкнення", n_start, n_end)
-                found_event = True
-            break
-
-        # 2. Ми поза графіком (чекаємо ВИМКНЕННЯ)
-        if start_dt > current_time_dt:
-            diff = (start_dt - current_time_dt).total_seconds() / 60
-            if 0 < diff <= 30:
-                # Шукаємо кінець цього майбутнього відключення для тривалості
+            # Якщо поточний час ближче до кінця інтервалу (ввімкнення)
+            diff_to_end = (end_dt - current_time_dt).total_seconds() / 60
+            if 0 < diff_to_end <= 30: # 30-хвилинне вікно до ввімкнення
                 duration = calculate_duration(start_s, end_s)
-                # Наступна подія після цього вимкнення - це ввімкнення (початок наступної паузи)
-                next_idx = (i + 1) % len(intervals)
-                next_on_time = intervals[next_idx].split('-')[0] # Орієнтовно
-                show_message("вимкнення", start_s, duration, "ввімкнення", end_s, "наступного блоку")
+                
+                # Формуємо повідомлення про ввімкнення
+                message = escape_markdown_v2(
+                    f"💡 *Увага \! Скоро увімкнуть світло \!* 💡\n\n"
+                    f"За графіком о *{start_s}* світло вимкнули, а о *{end_s}* мають увімкнути\.\n"
+                    f"Загальна тривалість відключення: *{duration}*\.
+"
+                    f"Насолоджуйтесь світлом і плануйте свій час\! 🙏"
+                )
+                send_telegram_message(message)
                 found_event = True
-            break
+                break
 
+        # Перевірка: чи ми знаходимось перед інтервалом відключення (чекаємо ВИМКНЕННЯ)
+        elif start_dt > current_time_dt:
+            # Якщо поточний час ближче до початку інтервалу (вимкнення)
+            diff_to_start = (start_dt - current_time_dt).total_seconds() / 60
+            if 0 < diff_to_start <= 30: # 30-хвилинне вікно до вимкнення
+                duration = calculate_duration(start_s, end_s)
+                
+                # Формуємо повідомлення про вимкнення
+                message = escape_markdown_v2(
+                    f"⚫ *Увага \! Скоро вимкнуть світло \!* ⚫\n\n"
+                    f"За графіком о *{start_s}* світло вимкнуть, а о *{end_s}* мають увімкнути\.
+"
+                    f"Загальна тривалість відключення: *{duration}*\.
+"
+                    f"Будьте готові і плануйте свій час\! 🙏"
+                )
+                send_telegram_message(message)
+                found_event = True
+                break
+    
     if not found_event:
-        print(f"ℹ️ {now.strftime('%H:%M')}: До подій більше 15 хв. Вихід.")
-
-def show_message(action, target_time, duration, next_action, next_start, next_end):
-    # Твій новий людяний шаблон
-    print(f"⚠️ **Увага! Вже ось-ось \"{action}\"**")
-    print(f"За графіком о **{target_time}** годині з тривалістю **{duration}**.")
-    print(f"Рівно за **{target_time}** годин заплановано \"{next_action}\" від **{next_start}** годин по **{next_end}** годин.")
-    print(f"\nПлануйте свій час і бережіть себе! 🙏")
+        print(f"ℹ️ {now.strftime('%H:%M')}: До подій більше 30 хв або подій на {weekday} не знайдено. Вихід.")
 
 if __name__ == "__main__":
     run_bot()
