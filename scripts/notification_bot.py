@@ -7,9 +7,10 @@ import re # For Markdown V2 escaping
 # --- Helper Functions ---
 def escape_markdown_v2(text: str) -> str:
     """Escapes characters in text that have a special meaning in MarkdownV2."""
-    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    escape_chars = r'_*[]()~`>#+-=|{}.!' # List of special chars
     # Escape backslash first to prevent issues with other escapes
     text = text.replace('\\', '\\\\')
+    # Use re.escape() to prepare the escape_chars list for regex
     return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
 
 def calculate_duration(start_s, end_s):
@@ -99,16 +100,18 @@ def run_bot():
             diff_to_end = (end_dt - current_time_dt).total_seconds() / 60
             if 0 < diff_to_end <= 30: # 30-хвилинне вікно до ввімкнення
                 
+                # Обчислюємо тривалість і екрануємо динамічні дані
+                unescaped_duration = calculate_duration(start_s, end_s)
                 safe_start_s = escape_markdown_v2(start_s)
                 safe_end_s = escape_markdown_v2(end_s)
-                safe_duration = escape_markdown_v2(calculate_duration(start_s, end_s))
+                safe_duration = escape_markdown_v2(unescaped_duration)
                 
                 # Формуємо повідомлення про ввімкнення
                 message = (
-                    f"💡 *Увага! Скоро увімкнуть світло\\!* 💡\n\n"
+                    "💡 *Увага! Скоро увімкнуть світло\\!* 💡\n\n"
                     f"За графіком о *{safe_start_s}* світло вимкнули, а о *{safe_end_s}* мають увімкнути\\.\n"
                     f"Загальна тривалість відключення: *{safe_duration}*\\.\n"
-                    f"Насолоджуйтесь світлом і плануйте свій час\\! 🙏"
+                    "Насолоджуйтесь світлом і плануйте свій час\\! 🙏"
                 )
                 send_telegram_message(message)
                 found_event = True
@@ -120,16 +123,18 @@ def run_bot():
             diff_to_start = (start_dt - current_time_dt).total_seconds() / 60
             if 0 < diff_to_start <= 30: # 30-хвилинне вікно до вимкнення
 
+                # Обчислюємо тривалість і екрануємо динамічні дані
+                unescaped_duration = calculate_duration(start_s, end_s)
                 safe_start_s = escape_markdown_v2(start_s)
                 safe_end_s = escape_markdown_v2(end_s)
-                safe_duration = escape_markdown_v2(calculate_duration(start_s, end_s))
+                safe_duration = escape_markdown_v2(unescaped_duration)
                 
                 # Формуємо повідомлення про вимкнення
                 message = (
-                    f"⚫ *Увага! Скоро вимкнуть світло\\!* ⚫\n\n"
+                    "⚫ *Увага! Скоро вимкнуть світло\\!* ⚫\n\n"
                     f"За графіком о *{safe_start_s}* світло вимкнуть, а о *{safe_end_s}* мають увімкнути\\.\n"
                     f"Загальна тривалість відключення: *{safe_duration}*\\.\n"
-                    f"Будьте готові і плануйте свій час\\! 🙏"
+                    "Будьте готові і плануйте свій час\\! 🙏"
                 )
                 send_telegram_message(message)
                 found_event = True
