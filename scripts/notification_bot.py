@@ -40,7 +40,7 @@ def send_telegram_message(message_text):
     bot_token = os.environ.get('TELEGRAM_TOKEN')
     chat_id = os.environ.get('TELEGRAM_CHAT_ID')
     if not bot_token or not chat_id:
-        print("Помилка: Токен або ID чату не знайдені в Secrets.")
+        print("Помилка: Токен або ID чату не знайдені.")
         return
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {'chat_id': chat_id, 'text': message_text, 'parse_mode': 'MarkdownV2'}
@@ -54,11 +54,10 @@ def send_telegram_message(message_text):
 def run_bot():
     print(f"--- Запуск бота: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
     
-    json_file_path = 'database.json'
     try:
-        with open(json_file_path, 'r', encoding='utf-8') as f:
+        with open('database.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-        print("Файл database.json успішно завантажено.")
+        print("Файл database.json завантажено.")
     except Exception as e:
         print(f"Помилка завантаження файлу: {e}")
         return
@@ -66,19 +65,16 @@ def run_bot():
     now = datetime.now()
     now_m = now.hour * 60 + now.minute
     current_time_str = now.strftime("%H:%M")
-    
     days_ukr = {0: "понеділок", 1: "вівторок", 2: "середа", 3: "четвер", 4: "п'ятниця", 5: "субота", 6: "неділя"}
     days_ukr_cap = {0: "Понеділок", 1: "Вівторок", 2: "Середа", 3: "Четвер", 4: "П'ятниця", 5: "Субота", 6: "Неділя"}
     today_dow = now.weekday()
     
-    print(f"Поточний час: {current_time_str}, День: {days_ukr[today_dow]}")
+    print(f"Зараз: {current_time_str}, {days_ukr[today_dow]}")
 
     all_events = []
     for day_offset in range(2):
         target_dow = (today_dow + day_offset) % 7
-        day_name = days_ukr[target_dow]
-        schedule = data.get('queues', {}).get('6.2', {}).get(day_name, [])
-        
+        schedule = data.get('queues', {}).get('6.2', {}).get(days_ukr[target_dow], [])
         for val in schedule:
             s_str, e_str = val.split('-')
             s_h, s_m = map(int, s_str.split(':'))
@@ -88,7 +84,7 @@ def run_bot():
             all_events.append({'start': start_total, 'end': end_total})
 
     if not all_events:
-        print("Вихід: Графік відключень порожній.")
+        print("Вихід: Графік порожній.")
         return
 
     all_events.sort(key=lambda x: x['start'])
@@ -102,7 +98,9 @@ def run_bot():
             curr = next_ev
     merged.append(curr)
     
-    print(f"Виявлено {len(merged)} склеєних інтервалів відключень.")
+    print(f"Виявлено {len(merged)} склеєних інтервалів відключень:")
+    for i, ev in enumerate(merged, 1):
+        print(f"   {i}. {format_time_display(ev['start'])} — {format_time_display(ev['end'])}")
 
     past_count, past_hours, future_count, future_hours = 0, 0, 0, 0
     for ev in merged:
@@ -118,31 +116,31 @@ def run_bot():
 
     notified = False
     for ev in merged:
+        start_s, end_s = format_time_display(ev['start']), format_time_display(ev['end'])
+        
         if ev['start'] <= now_m < ev['end']:
             diff = ev['end'] - now_m
-            print(f"Поточний стан: ВІДКЛЮЧЕННЯ. До ввімкнення: {int(diff)} хв.")
+            print(f"Перевірка [{start_s}-{end_s}]: Ми в блоці. До ВВІМКНЕННЯ: {int(diff)} хв.")
             if 0 < diff <= 30:
-                print("Умова 30 хв виконана. Надсилаю сповіщення про ВВІМКНЕННЯ.")
+                print(f"==> УМОВА 30 ХВ: Надсилаю про світло")
                 send_notif(current_time_str, days_ukr_cap[today_dow], ev['start'], ev['end'], diff, past_count, past_hours, future_count, future_hours, "on")
                 notified = True
                 break
         elif ev['start'] > now_m:
             diff = ev['start'] - now_m
-            print(f"Поточний стан: СВІТЛО Є. До наступного вимкнення: {int(diff)} хв.")
+            print(f"Перевірка [{start_s}-{end_s}]: Світло є. До ВИМКНЕННЯ: {int(diff)} хв.")
             if 0 < diff <= 30:
-                print("Умова 30 хв виконана. Надсилаю сповіщення про ВИМКНЕННЯ.")
+                print(f"==> УМОВА 30 ХВ: Надсилаю про вимкнення")
                 send_notif(current_time_str, days_ukr_cap[today_dow], ev['start'], ev['end'], diff, past_count, past_hours, future_count, future_hours, "off")
                 notified = True
                 break
 
     if not notified:
-        print("Вихід: Активних подій у вікні 30 хвилин не знайдено.")
+        print("Підсумок: Подій у вікні 30 хв не знайдено. Бот завершив роботу.")
 
 def send_notif(cur_time, day, start, end, diff, p_c, p_h, f_c, f_h, type):
     icon = get_time_icon(start if type == "off" else end)
     status = "вимкнуть світло\\! ⚡" if type == "off" else "увімкнуть світло\\! 💡"
-    duration = calculate_duration_from_min(start, end)
-    
     msg = (
         f"{icon} *Увага\\! Скоро {status}*\n\n"
         f"📅 {escape_markdown_v2(day)}, {escape_markdown_v2(cur_time)}\n"
@@ -150,12 +148,12 @@ def send_notif(cur_time, day, start, end, diff, p_c, p_h, f_c, f_h, type):
         f"📋 *За графіком:*\n"
         f"   • Вимкнення: {escape_markdown_v2(format_time_display(start))}\n"
         f"   • Увімкнення: {escape_markdown_v2(format_time_display(end))}\n"
-        f"   • Тривалість: {escape_markdown_v2(duration)}\n\n"
+        f"   • Тривалість: {escape_markdown_v2(calculate_duration_from_min(start, end))}\n\n"
         f"📊 *Сьогодні:*\n"
-        f"   • Відключень було: {escape_markdown_v2(str(p_c))} \\({escape_markdown_v2(str(p_h))} год\\.\\)\n"
-        f"   • Залишилось: {escape_markdown_v2(str(f_c))} \\({escape_markdown_v2(str(f_h))} год\\.\\)\n\n"
+        f"   • Було: {escape_markdown_v2(str(p_c))} \\({escape_markdown_v2(str(p_h))} год\\.\\)\n"
+        f"   • Буде ще: {escape_markdown_v2(str(f_c))} \\({escape_markdown_v2(str(f_h))} год\\.\\)\n\n"
         f"{get_random_tip(type)}\n\n"
-        f"📊 Повний графік відключень для всіх черг: https://mixaua\\.github\\.io/Grafik/"
+        f"📊 Графік: https://mixaua\\.github\\.io/Grafik/"
     )
     send_telegram_message(msg)
 
