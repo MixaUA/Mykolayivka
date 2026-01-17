@@ -1,0 +1,25 @@
+name: Live Notification Bot
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [6.2-bot]
+
+jobs:
+  send-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Run Notification Script
+        run: |
+          # Встановлюємо правильний час для Києва
+          sudo timedatectl set-timezone Europe/Kiev
+          # Запускаємо твій скрипт з шаблоном
+          python scripts/notification_bot.py
