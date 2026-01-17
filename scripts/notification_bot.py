@@ -1,6 +1,22 @@
 import json
 from datetime import datetime, timedelta
-import os # Keep os for potential future use or consistency if it was there before
+import os
+import requests
+import re # For Markdown V2 escaping
+
+# --- Helper Functions ---
+def escape_markdown_v2(text: str) -> str:
+    """Escapes characters in text that have a special meaning in MarkdownV2."""
+    # List of characters that need to be escaped in MarkdownV2:
+    # _, *, [, ], (, ), ~, `, >, #, +, -, =, |, {, }, ., !, \
+    
+    # Escape backslash first to prevent issues with other escapes
+    text = text.replace('\\', '\\\\')
+    # Escape other special characters
+    # Note: '-' must be escaped or placed at the start/end of the character class
+    # to avoid being interpreted as a range.
+    escape_chars_pattern = r"([_*[\\]()~`>#+=\-|{{}}.!])"
+    return re.sub(escape_chars_pattern, r'\\\1', text)
 
 def calculate_duration(start_s, end_s):
     """Рахує тривалість між двома мітками часу."""
@@ -11,28 +27,47 @@ def calculate_duration(start_s, end_s):
     if end_s == "24:00": t2 += timedelta(minutes=1)
     
     duration = t2 - t1
-    hours = duration.total_seconds() // 3600
-    minutes = (duration.total_seconds() % 3600) // 60
-    
+    total_minutes = int(duration.total_seconds() / 60)
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+
     if hours > 0 and minutes > 0:
-        return f"{int(hours)} год. {int(minutes)} хв."
+        return f"{hours} год\. {minutes} хв\."
     elif hours > 0:
-        return f"{int(hours)} год."
+        return f"{hours} год\."
     elif minutes > 0:
-        return f"{int(minutes)} хв."
+        return f"{minutes} хв\."
     return "менше хвилини"
 
-def show_message(action, target_time, duration, next_action, next_start, next_end):
-    """Виводить повідомлення у stdout (логи GitHub Actions)"""
-    print(f"⚠️ Увага! Вже ось-ось \"{action}\"")
-    print(f"За графіком о {target_time} годині з тривалістю {duration}.")
-    if next_action:
-        print(f"Рівно за {target_time} годин заплановано \"{next_action}\" від {next_start} годин по {next_end} годин.")
-    print(f"\nПлануйте свій час і бережіть себе! 🙏")
+def send_telegram_message(message_text):
+    """Надсилає повідомлення в Telegram канал."""
+    bot_token = os.environ.get('TELEGRAM_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+
+    if not bot_token or not chat_id:
+        print("Помилка: Змінні оточення TELEGRAM_TOKEN або TELEGRAM_CHAT_ID не встановлені.")
+        return
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        'chat_id': chat_id,
+        'text': message_text,
+        'parse_mode': 'MarkdownV2'
+    }
+
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status() # Піднімає HTTPError для поганих відповідей (4xx або 5xx)
+        print(f"Повідомлення успішно відправлено в Telegram. Відповідь: {response.json()}")
+    except requests.exceptions.RequestException as e:
+        print(f"Помилка відправки повідомлення в Telegram: {e}")
+        if response is not None:
+            print(f"Відповідь Telegram API: {response.text}")
+
 
 def run_bot():
     # Читаємо з database.json
-    json_file_path = 'test_database.json' # Повернуто до database.json
+    json_file_path = 'database.json'
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -49,7 +84,7 @@ def run_bot():
     days_ukr = {0: "понеділок", 1: "вівторок", 2: "середа", 3: "четвер", 4: "п'ятниця", 5: "субота", 6: "неділя"}
     weekday = days_ukr[now.weekday()]
     
-    # Виправлений шлях до черги
+    # Виправлення: Правильний шлях до черги
     queue_data = data.get('queues', {}).get('6.2', {})
     intervals = queue_data.get(weekday, [])
 
@@ -71,7 +106,14 @@ def run_bot():
             if 0 < diff_to_end <= 30: # 30-хвилинне вікно до ввімкнення
                 duration = calculate_duration(start_s, end_s)
                 
-                show_message("ввімкнення", end_s, duration, None, None, None) # Next action info removed for simplicity
+                # Формуємо повідомлення про ввімкнення
+                message = escape_markdown_v2(
+                    f"💡 *Увага! Скоро увімкнуть світло!* 💡\n\n"
+                    f"За графіком о *{start_s}* світло вимкнули, а о *{end_s}* мають увімкнути.\n"
+                    f"Загальна тривалість відключення: *{duration}*.\n"
+                    f"Насолоджуйтесь світлом і плануйте свій час! 🙏"
+                )
+                send_telegram_message(message)
                 found_event = True
                 break
 
@@ -82,7 +124,14 @@ def run_bot():
             if 0 < diff_to_start <= 30: # 30-хвилинне вікно до вимкнення
                 duration = calculate_duration(start_s, end_s)
                 
-                show_message("вимкнення", start_s, duration, None, None, None) # Next action info removed for simplicity
+                # Формуємо повідомлення про вимкнення
+                message = escape_markdown_v2(
+                    f"⚫ *Увага! Скоро вимкнуть світло!* ⚫\n\n"
+                    f"За графіком о *{start_s}* світло вимкнуть, а о *{end_s}* мають увімкнути.\n"
+                    f"Загальна тривалість відключення: *{duration}*.\n"
+                    f"Будьте готові і плануйте свій час! 🙏"
+                )
+                send_telegram_message(message)
                 found_event = True
                 break
     
