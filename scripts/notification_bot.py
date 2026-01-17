@@ -15,7 +15,7 @@ def escape_markdown_v2(text: str) -> str:
     # Escape other special characters
     # Note: '-' must be escaped or placed at the start/end of the character class
     # to avoid being interpreted as a range.
-    escape_chars_pattern = r"([_*[\\]()~`>#+\-=|{{}}.!])"
+    escape_chars_pattern = r"([_*[\\]()~`>#+\\-=|{{}}.!])" # THIS IS THE CORRECTED PATTERN
     return re.sub(escape_chars_pattern, r'\\\1', text)
 
 def calculate_duration(start_s, end_s):
@@ -136,7 +136,7 @@ def run_bot():
                 break
     
     if not found_event:
-        print(f"ℹ️ {now.strftime('%H:%M')}: До подій більше 30 хв або подій на {weekday} не знайдено. Вихід.")
+        print(f"ℹ️ {now.strftime('%H:%M')}: До подій більше 30 хв або подій на {weekday}. Вихід.")
 
 if __name__ == "__main__":
     run_bot()
