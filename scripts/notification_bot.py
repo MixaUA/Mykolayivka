@@ -7,13 +7,14 @@ import re # For Markdown V2 escaping
 # --- Helper Functions ---
 def escape_markdown_v2(text: str) -> str:
     """Escapes characters in text that have a special meaning in MarkdownV2."""
-    # Official list of characters to be escaped in MarkdownV2:
-    # _, *, [, ], (, ), ~, `, >, #, +, -, =, |, {, }, ., !
-    # And the backslash itself: \
+    # List of characters that need to be escaped in MarkdownV2:
+    # _, *, [, ], (, ), ~, `, >, #, +, -, =, |, {, }, ., !, \
     
     # Escape backslash first to prevent issues with other escapes
     text = text.replace('\\', '\\\\')
     # Escape other special characters
+    # Note: '-' must be escaped or placed at the start/end of the character class
+    # to avoid being interpreted as a range.
     escape_chars_pattern = r"([_*[\\]()~`>#+\-=|"{}!])"
     return re.sub(escape_chars_pattern, r'\\\1', text)
 
