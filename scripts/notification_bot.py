@@ -7,16 +7,10 @@ import re # For Markdown V2 escaping
 # --- Helper Functions ---
 def escape_markdown_v2(text: str) -> str:
     """Escapes characters in text that have a special meaning in MarkdownV2."""
-    # List of characters that need to be escaped in MarkdownV2:
-    # _, *, [, ], (, ), ~, `, >, #, +, -, =, |, {, }, ., !, \
-    
+    escape_chars = r'_*[]()~`>#+-=|{}.!'
     # Escape backslash first to prevent issues with other escapes
     text = text.replace('\\', '\\\\')
-    # Escape other special characters
-    # Note: '-' must be escaped or placed at the start/end of the character class
-    # to avoid being interpreted as a range.
-    escape_chars_pattern = r"([_*[\\]()~`>#+\\-=|{{}}.!])" # THIS IS THE CORRECTED PATTERN
-    return re.sub(escape_chars_pattern, r'\\\1', text)
+    return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
 
 def calculate_duration(start_s, end_s):
     """Рахує тривалість між двома мітками часу."""
@@ -32,11 +26,11 @@ def calculate_duration(start_s, end_s):
     minutes = total_minutes % 60
 
     if hours > 0 and minutes > 0:
-        return f"{hours} год\. {minutes} хв\."
+        return f"{hours} год. {minutes} хв."
     elif hours > 0:
-        return f"{hours} год\."
+        return f"{hours} год."
     elif minutes > 0:
-        return f"{minutes} хв\."
+        return f"{minutes} хв."
     return "менше хвилини"
 
 def send_telegram_message(message_text):
@@ -104,14 +98,17 @@ def run_bot():
             # Якщо поточний час ближче до кінця інтервалу (ввімкнення)
             diff_to_end = (end_dt - current_time_dt).total_seconds() / 60
             if 0 < diff_to_end <= 30: # 30-хвилинне вікно до ввімкнення
-                duration = calculate_duration(start_s, end_s)
+                
+                safe_start_s = escape_markdown_v2(start_s)
+                safe_end_s = escape_markdown_v2(end_s)
+                safe_duration = escape_markdown_v2(calculate_duration(start_s, end_s))
                 
                 # Формуємо повідомлення про ввімкнення
-                message = escape_markdown_v2(
-                    f"💡 *Увага! Скоро увімкнуть світло!* 💡\n\n"
-                    f"За графіком о *{start_s}* світло вимкнули, а о *{end_s}* мають увімкнути.\n"
-                    f"Загальна тривалість відключення: *{duration}*.\n"
-                    f"Насолоджуйтесь світлом і плануйте свій час! 🙏"
+                message = (
+                    f"💡 *Увага! Скоро увімкнуть світло\\!* 💡\n\n"
+                    f"За графіком о *{safe_start_s}* світло вимкнули, а о *{safe_end_s}* мають увімкнути\\.\n"
+                    f"Загальна тривалість відключення: *{safe_duration}*\\.\n"
+                    f"Насолоджуйтесь світлом і плануйте свій час\\! 🙏"
                 )
                 send_telegram_message(message)
                 found_event = True
@@ -122,14 +119,17 @@ def run_bot():
             # Якщо поточний час ближче до початку інтервалу (вимкнення)
             diff_to_start = (start_dt - current_time_dt).total_seconds() / 60
             if 0 < diff_to_start <= 30: # 30-хвилинне вікно до вимкнення
-                duration = calculate_duration(start_s, end_s)
+
+                safe_start_s = escape_markdown_v2(start_s)
+                safe_end_s = escape_markdown_v2(end_s)
+                safe_duration = escape_markdown_v2(calculate_duration(start_s, end_s))
                 
                 # Формуємо повідомлення про вимкнення
-                message = escape_markdown_v2(
-                    f"⚫ *Увага! Скоро вимкнуть світло!* ⚫\n\n"
-                    f"За графіком о *{start_s}* світло вимкнуть, а о *{end_s}* мають увімкнути.\n"
-                    f"Загальна тривалість відключення: *{duration}*.\n"
-                    f"Будьте готові і плануйте свій час! 🙏"
+                message = (
+                    f"⚫ *Увага! Скоро вимкнуть світло\\!* ⚫\n\n"
+                    f"За графіком о *{safe_start_s}* світло вимкнуть, а о *{safe_end_s}* мають увімкнути\\.\n"
+                    f"Загальна тривалість відключення: *{safe_duration}*\\.\n"
+                    f"Будьте готові і плануйте свій час\\! 🙏"
                 )
                 send_telegram_message(message)
                 found_event = True
