@@ -329,7 +329,21 @@ function resetView() { localStorage.removeItem('selectedQueue'); location.reload
 /**
  * Toggles between Today (0) and Tomorrow (1) views.
  */
-function setDay(i) { dayIdx = i; document.getElementById('tabL').classList.toggle('active', i === 0); document.getElementById('tabR').classList.toggle('active', i === 1); render(); }
+function setDay(i) { 
+    dayIdx = i; 
+    document.getElementById('tabL').classList.toggle('active', i === 0); 
+    document.getElementById('tabR').classList.toggle('active', i === 1); 
+    render(); 
+
+    // Додаємо відстеження для GoatCounter
+    if (window.goatcounter && window.goatcounter.count) {
+        window.goatcounter.count({
+            path:  i === 0 ? 'tab-today' : 'tab-tomorrow',
+            title: i === 0 ? 'Вкладка Сьогодні' : 'Вкладка Завтра',
+            event: true 
+        });
+    }
+}
 
 /**
  * Toggles between List (1) and Visual (2) view modes.
@@ -405,6 +419,7 @@ function openGoogleCalendar(slot, isToday, type) {
     const [sT, eT] = slot.split('-');
     const d = new Date(); if (!isToday) d.setDate(d.getDate() + 1);
     const iso = (t) => { const [h, m] = t.split(':').map(Number); const date = new Date(d); date.setHours(h, m, 0, 0); return date.toISOString().replace(/-|:|\.\d\d\d/g, ""); };
+    if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({path: 'add-to-calendar', title: 'Додавання в календар', event: true});
     const title = `Черга ${curQ}: ${type === 'off' ? 'Відключення' : 'Включення'} (${sT}-${eT})`;
     window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${iso(sT)}/${iso(eT)}&sf=true&output=xml`, '_blank');
 }
