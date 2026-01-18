@@ -73,33 +73,70 @@ async function fetchData() {
 }
 
 function calculateTimerData() {
-    if (!db || !curQ) return;
-    const now = new Date(), todayIdx = (now.getDay() + 6) % 7, allEvents = [];
+    if (!db || !curQ || !dayPrefixMap || !P_LIST) return;
+    
+    const now = new Date();
+    const todayDow = (now.getDay() + 6) % 7; 
+    const allEvents = [];
+
+    // Перевірка валідності послідовності індексів
+    const todayMapIdx = dayPrefixMap[todayDow];
+    const tomorrowMapIdx = dayPrefixMap[(todayDow + 1) % 7];
+    
+    // Якщо завтрашній індекс не дорівнює (сьогоднішній + 1) % 7, 
+    // значить бот ще не оновив мапінг і склеювати не можна.
+    const isNextIndexValid = tomorrowMapIdx === (todayMapIdx + 1) % 7;
+
     for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
-        const targetIdx = (todayIdx + dayOffset) % 7;
+        // Якщо мапінг "кривий", ігноруємо завтрашні дані (dayOffset === 1)
+        if (dayOffset === 1 && !isNextIndexValid) continue;
+
+        const targetDow = (todayDow + dayOffset) % 7;
         const qData = db[`${curQ}_cherg`];
-        const pref = P_LIST[dayPrefixMap[targetIdx]];
+        
+        if (!qData) continue;
+
+        const pref = P_LIST[dayPrefixMap[targetDow]];
         const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
+        
         if (!dayKeys.length) continue;
+
         const slots = dayKeys.map(k => {
             const val = qData[k];
-            if (!/\d/.test(val)) return null;
-            const [s, e] = val.split('-').map(t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; });
-            return { start: s + dayOffset * 1440, end: (e === 0 ? 1440 : e) + dayOffset * 1440, type: 'off' };
+            if (!val || !/\d/.test(val)) return null;
+            const [s, e] = val.split('-').map(t => { 
+                const [h, m] = t.split(':').map(Number); 
+                return h * 60 + m; 
+            });
+            return { 
+                start: s + (dayOffset * 1440), 
+                end: (e === 0 ? 1440 : e) + (dayOffset * 1440), 
+                type: 'off' 
+            };
         }).filter(Boolean);
+
         let last = dayOffset * 1440;
         slots.sort((a, b) => a.start - b.start).forEach(s => {
             if (s.start > last) allEvents.push({ start: last, end: s.start, type: 'on' });
-            allEvents.push(s); last = s.end;
+            allEvents.push(s); 
+            last = s.end;
         });
-        if (last < (dayOffset + 1) * 1440) allEvents.push({ start: last, end: (dayOffset + 1) * 1440, type: 'on' });
+        if (last < (dayOffset + 1) * 1440) {
+            allEvents.push({ start: last, end: (dayOffset + 1) * 1440, type: 'on' });
+        }
     }
+
     const nowM = now.getHours() * 60 + now.getMinutes();
     let cur = allEvents.find(ev => nowM >= ev.start && nowM < ev.end);
-    if (cur && cur.end === 1440) {
+
+    // Склеювання тільки при валідному мапінгу
+    if (cur && cur.end === 1440 && isNextIndexValid) {
         const next = allEvents.find(ev => ev.start === 1440);
-        if (next && next.type === cur.type) cur = { ...cur, end: next.end };
+        if (next && next.type === cur.type) {
+            cur = { ...cur, end: next.end };
+        }
     }
+
     timerData = cur ? { endTime: cur.end, type: cur.type } : null;
 }
 
