@@ -77,29 +77,20 @@ function calculateTimerData() {
     
     const now = new Date();
     const todayDow = (now.getDay() + 6) % 7; 
-    const allEvents = [];
+    const nowM = now.getHours() * 60 + now.getMinutes();
+    const qData = db[`${curQ}_cherg`];
 
-    // Перевірка валідності послідовності індексів
-    const todayMapIdx = dayPrefixMap[todayDow];
-    const tomorrowMapIdx = dayPrefixMap[(todayDow + 1) % 7];
-    
-    // Якщо завтрашній індекс не дорівнює (сьогоднішній + 1) % 7, 
-    // значить бот ще не оновив мапінг і склеювати не можна.
-    const isNextIndexValid = tomorrowMapIdx === (todayMapIdx + 1) % 7;
+    // Отримуємо індекси з нашого мапінгу
+    const currMapIdx = dayPrefixMap[todayDow];
+    const nextMapIdx = dayPrefixMap[(todayDow + 1) % 7];
 
-    for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
-        // Якщо мапінг "кривий", ігноруємо завтрашні дані (dayOffset === 1)
-        if (dayOffset === 1 && !isNextIndexValid) continue;
+    // УМОВА: Чи йдуть індекси один за одним (наприклад, 5 -> 6, або 6 -> 0)
+    const isSequenceValid = nextMapIdx === (currMapIdx + 1) % 7;
 
-        const targetDow = (todayDow + dayOffset) % 7;
-        const qData = db[`${curQ}_cherg`];
-        
-        if (!qData) continue;
-
-        const pref = P_LIST[dayPrefixMap[targetDow]];
+    function getEventsForDay(mapIdx, offsetMinutes) {
+        const pref = P_LIST[mapIdx];
         const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
-        
-        if (!dayKeys.length) continue;
+        if (!dayKeys.length) return [];
 
         const slots = dayKeys.map(k => {
             const val = qData[k];
@@ -109,35 +100,51 @@ function calculateTimerData() {
                 return h * 60 + m; 
             });
             return { 
-                start: s + (dayOffset * 1440), 
-                end: (e === 0 ? 1440 : e) + (dayOffset * 1440), 
+                start: s + offsetMinutes, 
+                end: (e === 0 ? 1440 : e) + offsetMinutes, 
                 type: 'off' 
             };
         }).filter(Boolean);
 
-        let last = dayOffset * 1440;
+        let dayEvents = [];
+        let last = offsetMinutes;
         slots.sort((a, b) => a.start - b.start).forEach(s => {
-            if (s.start > last) allEvents.push({ start: last, end: s.start, type: 'on' });
-            allEvents.push(s); 
+            if (s.start > last) dayEvents.push({ start: last, end: s.start, type: 'on' });
+            dayEvents.push(s); 
             last = s.end;
         });
-        if (last < (dayOffset + 1) * 1440) {
-            allEvents.push({ start: last, end: (dayOffset + 1) * 1440, type: 'on' });
+        if (last < offsetMinutes + 1440) {
+            dayEvents.push({ start: last, end: offsetMinutes + 1440, type: 'on' });
         }
+        return dayEvents;
     }
 
-    const nowM = now.getHours() * 60 + now.getMinutes();
+    // Формуємо події сьогоднішнього дня (завжди 0..1440)
+    let allEvents = getEventsForDay(currMapIdx, 0);
+
+    // Якщо індекси йдуть поруч ("one", "two"), додаємо блок завтрашнього дня (+1440)
+    if (isSequenceValid) {
+        const tomorrowEvents = getEventsForDay(nextMapIdx, 1440);
+        allEvents = allEvents.concat(tomorrowEvents);
+    }
+
+    // Шукаємо, де ми зараз
     let cur = allEvents.find(ev => nowM >= ev.start && nowM < ev.end);
 
-    // Склеювання тільки при валідному мапінгу
-    if (cur && cur.end === 1440 && isNextIndexValid) {
-        const next = allEvents.find(ev => ev.start === 1440);
-        if (next && next.type === cur.type) {
-            cur = { ...cur, end: next.end };
+    if (cur) {
+        // СКЛЕЮВАННЯ: якщо подія закінчується рівно о 24:00 (1440) і є наступна того ж типу
+        if (cur.end === 1440 && isSequenceValid) {
+            const next = allEvents.find(ev => ev.start === 1440);
+            if (next && next.type === cur.type) {
+                cur = { ...cur, end: next.end };
+            }
         }
+        
+        // ЗАХИСТ: Якщо індекси були НЕ поруч, cur.end ніколи не перевищить 1440
+        timerData = { endTime: cur.end, type: cur.type };
+    } else {
+        timerData = null;
     }
-
-    timerData = cur ? { endTime: cur.end, type: cur.type } : null;
 }
 
 function updateFlipTimer() {
