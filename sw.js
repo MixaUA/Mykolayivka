@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mykolaivka-new-cache-v24'; // Оновлено версію
+const CACHE_NAME = 'mykolaivka-new-cache-v25'; // Оновлено версію
 const API_CACHE_NAME = 'mykolaivka-new-api-cache-v1';
 
 const urlsToCache = [
