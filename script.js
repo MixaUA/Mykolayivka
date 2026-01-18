@@ -1,22 +1,25 @@
+// --- Constants and Configuration ---
 const API_URL = "https://raw.githubusercontent.com/MixaUA/Mykolayivka/main/database_new.json";
 const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=50.2699&longitude=34.3961&daily=temperature_2m_max,temperature_2m_min,weathercode&hourly=weathercode&timezone=Europe/Kiev&forecast_days=2";
 const P_LIST = ["one", "two", "three", "four", "five", "six", "seven"];
 const DAYS_UA = ["понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота", "неділя"];
 
+// --- UI Assets (SVGs) ---
 const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>`;
 const clockSVG = `<svg class="loader-clock" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite"/></path></svg>`;
 const powerOffSVG = `<svg class="icon-pwr" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2.5"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/></svg>`;
 const powerOnSVG = `<svg class="icon-pwr" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2.5"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/></svg>`;
 const weatherIcons = {
     sun: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="day"><g transform="translate(32,32)"><g class="am-weather-sun am-weather-sun-shiny am-weather-easing-ease-in-out"><g><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(45)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(90)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(135)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(180)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(225)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(270)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g><g transform="rotate(315)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,11)" x1="0" x2="0" y1="0" y2="6" /></g></g><circle cx="0" cy="0" fill="white" r="7" stroke="black" stroke-width="1.5"/></g></g></svg>`,
-    cloudSun: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="cloudy-day-1"><g transform="translate(20,10)"><g transform="translate(0,16)"><g class="am-weather-sun"><g><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(45)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(90)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(135)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(180)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(225)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(270)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(315)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g></g><circle cx="0" cy="0" fill="white" r="5" stroke="black" stroke-width="1.5"/></g><g><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/></g></g></g></svg>`,
-    cloud: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="cloudy"><g transform="translate(20,10)"><g class="am-weather-cloud-1"><path d="M47.7,35.4     c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3     c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-10,-8), scale(0.6)"/></g><g class="am-weather-cloud-2"><path d="M47.7,35.4     c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3     c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/></g></g></g></svg>`,
-    rain: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="rainy-5"><g transform="translate(20,10)"><g><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/></g></g><g transform="translate(34,46), rotate(10)"><line class="am-weather-rain-1" fill="none" stroke="black" stroke-dasharray="4,7" stroke-linecap="round" stroke-width="2" transform="translate(-6,1)" x1="0" x2="0" y1="0" y2="8" /><line class="am-weather-rain-2" fill="none" stroke="black" stroke-dasharray="4,7" stroke-linecap="round" stroke-width="2" transform="translate(0,-1)" x1="0" x2="0" y1="0" y2="8" /></g></g></svg>`,
-    snow: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="snowy-5"><g transform="translate(20,10)"><g><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/></g><g class="am-weather-snow-1"><g transform="translate(7,28)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.2" transform="translate(0,9), rotate(0)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(45)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(90)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(135)" x1="0" x2="0" y1="-2.5" y2="2.5" /></g></g><g class="am-weather-snow-2"><g transform="translate(16,28)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.2" transform="translate(0,9), rotate(0)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(45)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(90)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(135)" x1="0" x2="0" y1="-2.5" y2="2.5" /></g></g></g></g></svg>`,
+    cloudSun: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="cloudy-day-1"><g transform="translate(20,10)"><g transform="translate(0,16)"><g class="am-weather-sun"><g><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(45)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(90)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(135)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(180)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(225)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(270)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g><g transform="rotate(315)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" transform="translate(0,9)" x1="0" x2="0" y1="0" y2="3"/></g></g><circle cx="0" cy="0" fill="white" r="5" stroke="black" stroke-width="1.5"/></g><g><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3 c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/></g></g></g></svg>`,
+    cloud: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="cloudy"><g transform="translate(20,10)"><g class="am-weather-cloud-1"><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-10,-8), scale(0.6)"/></g><g class="am-weather-cloud-2"><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/></g></g></g></svg>`,
+    rain: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="rainy-5"><g transform="translate(20,10)"><g><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3 c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/></g></g><g transform="translate(34,46), rotate(10)"><line class="am-weather-rain-1" fill="none" stroke="black" stroke-dasharray="4,7" stroke-linecap="round" stroke-width="2" transform="translate(-6,1)" x1="0" x2="0" y1="0" y2="8" /><line class="am-weather-rain-2" fill="none" stroke="black" stroke-dasharray="4,7" stroke-linecap="round" stroke-width="2" transform="translate(0,-1)" x1="0" x2="0" y1="0" y2="8" /></g></g></svg>`,
+    snow: `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g id="snowy-5"><g transform="translate(20,10)"><g><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3 c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-20,-11)"/></g><g class="am-weather-snow-1"><g transform="translate(7,28)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.2" transform="translate(0,9), rotate(0)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(45)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(90)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(135)" x1="0" x2="0" y1="-2.5" y2="2.5" /></g></g><g class="am-weather-snow-2"><g transform="translate(16,28)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.2" transform="translate(0,9), rotate(0)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(45)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(90)" x1="0" x2="0" y1="-2.5" y2="2.5" /><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1" transform="translate(0,9), rotate(135)" x1="0" x2="0" y1="-2.5" y2="2.5" /></g></g></g></g></svg>`,
     thunder: `<svg viewBox="0 0 64 64"><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-2,-11)"/><g transform="translate(18, 30) scale(1.3)"><polygon fill="black" stroke="none" points="14.3,-2.9 20.5,-2.9 16.4,4.3 20.3,4.3 11.5,14.6 14.9,6.9 11.1,6.9" /><animateTransform attributeName="transform" type="translate" values="0 0; 0 5; 0 0" dur="1s" repeatCount="indefinite" additive="sum"/></g><g transform="translate(26,40), rotate(10)"><line class="am-weather-rain-1" fill="none" stroke="black" stroke-dasharray="4,7" stroke-linecap="round" stroke-width="2" transform="translate(-6,1)" x1="0" x2="0" y1="0" y2="8" /><line class="am-weather-rain-2" fill="none" stroke="black" stroke-dasharray="4,7" stroke-linecap="round" stroke-width="2" transform="translate(0,-1)" x1="0" x2="0" y1="0" y2="8" /></g></svg>`,
-    fog: `<svg viewBox="0 0 64 64"><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-2,-11)"/><g transform="translate(12, 45)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" x1="0" y1="0" x2="40" y2="0" stroke-dasharray="4,4"><animateTransform attributeName="transform" type="translate" values="0 0; 2 0; -2 0; 0 0" dur="3.5s" repeatCount="indefinite" additive="sum"/></line><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" x1="0" y1="8" x2="35" y2="8" stroke-dasharray="4,4"><animateTransform attributeName="transform" type="translate" values="0 0; -2 0; 2 0; 0 0" dur="4s" repeatCount="indefinite" additive="sum" begin="0.3s"/></line></g></svg>`
+    fog: `<svg viewBox="0 0 64 64"><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3 c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-2,-11)"/><g transform="translate(12, 45)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" x1="0" y1="0" x2="40" y2="0" stroke-dasharray="4,4"><animateTransform attributeName="transform" type="translate" values="0 0; 2 0; -2 0; 0 0" dur="3.5s" repeatCount="indefinite" additive="sum"/></line><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" x1="0" y1="8" x2="35" y2="8" stroke-dasharray="4,4"><animateTransform attributeName="transform" type="translate" values="0 0; -2 0; 2 0; 0 0" dur="4s" repeatCount="indefinite" additive="sum" begin="0.3s"/></line></g></svg>`
 };
 
+// --- State Variables ---
 let dayPrefixMap = [0, 1, 2, 3, 4, 5, 6]; 
 let lastCalibrationDate = null;
 let db = null, curQ = localStorage.getItem('selectedQueue');
@@ -24,6 +27,9 @@ let dayIdx = 0, viewMode = 1;
 let weatherData = null, timerData = null;
 let clickedSlots = JSON.parse(localStorage.getItem('clickedSlots')) || {};
 
+/**
+ * Loads the external mapping configuration for day-to-prefix associations.
+ */
 async function loadConfig() {
     try {
         const response = await fetch('mapping.json?t=' + Date.now());
@@ -37,6 +43,9 @@ async function loadConfig() {
     } catch (e) { console.error("Config load error"); }
 }
 
+/**
+ * Main entry point: initializes UI, loads data, and sets up intervals.
+ */
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
     updateFlipTimer();
@@ -51,6 +60,9 @@ async function init() {
     setInterval(() => { fetchWeather(); }, 3600000);
 }
 
+/**
+ * Fetches power schedule data from the GitHub repository.
+ */
 async function fetchData() {
     if (lastCalibrationDate) {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -72,73 +84,59 @@ async function fetchData() {
     }
 }
 
+/**
+ * Calculates current event duration and type for the countdown timer.
+ */
 function calculateTimerData() {
     if (!db || !curQ || !dayPrefixMap || !P_LIST) return;
-    
-    const now = new Date();
-    const todayDow = (now.getDay() + 6) % 7; 
-    const nowM = now.getHours() * 60 + now.getMinutes();
+    const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
     const qData = db[`${curQ}_cherg`];
+    const tIdx = (now.getDay() + 6) % 7;
+    const pref = P_LIST[dayPrefixMap[tIdx]];
+    const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
+    if (!dayKeys.length) return;
 
-    // Функція збору слотів, як у вкладок
-    function getSlotsForDay(dIdx, offset) {
-        const tIdx = ((now.getDay() + 6) % 7 + dIdx) % 7;
-        const pref = P_LIST[dayPrefixMap[tIdx]];
-        const keys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
-        
-        return keys.map(k => {
-            const val = qData[k];
-            if (!val || !/\d/.test(val)) return null;
-            const [s, e] = val.split('-').map(t => { 
-                const [h, m] = t.split(':').map(Number); 
-                return h * 60 + m; 
-            });
-            return { start: s + offset, end: (e === 0 ? 1440 : e) + offset, type: 'off' };
-        }).filter(Boolean);
-    }
+    const slots = dayKeys.map(k => {
+        const val = qData[k];
+        if (!val || !/\d/.test(val)) return null;
+        const [s, e] = val.split('-').map(t => { 
+            const [h, m] = t.split(':').map(Number); 
+            return h * 60 + m; 
+        });
+        return { start: s, end: (e === 0 ? 1440 : e), type: 'off' };
+    }).filter(Boolean);
 
-    // 1. Беремо "Сьогодні" (як вкладка 1)
-    let todaySlots = getSlotsForDay(0, 0);
-    // 2. Беремо "Завтра" (як вкладка 2)
-    let tomorrowSlots = getSlotsForDay(1, 1440);
-
-    // Склеюємо їх в один потік
-    let allSlots = [...todaySlots, ...tomorrowSlots];
-    
-    // Додаємо "світло"
-    let allEvents = [];
-    let last = 0;
-    allSlots.sort((a, b) => a.start - b.start).forEach(s => {
-        if (s.start > last) allEvents.push({ start: last, end: s.start, type: 'on' });
-        allEvents.push(s); 
-        last = s.end;
+    let full = [], last = 0;
+    slots.sort((a, b) => a.start - b.start).forEach(s => {
+        if (s.start > last) full.push({ start: last, end: s.start, type: 'on' });
+        full.push(s); last = s.end;
     });
-    if (last < 2880) allEvents.push({ start: last, end: 2880, type: 'on' });
+    if (last < 1440) full.push({ start: last, end: 1440, type: 'on' });
 
-    // ШУКАЄМО ПОТОЧНУ ПОДІЮ
-    let cur = allEvents.find(ev => nowM >= ev.start && nowM < ev.end);
-
+    let cur = full.find(ev => nowM >= ev.start && nowM < ev.end);
     if (cur) {
-        // ПЕРЕВІРКА НА РОЗРИВ:
-        // Якщо подія закінчуется о 24:00 (1440)
         if (cur.end === 1440) {
-            // Дивимось, чи завтра о 00:00 (теж 1440) починається така сама подія
-            const nextMatch = allEvents.find(ev => ev.start === 1440 && ev.type === cur.type);
-            
-            if (nextMatch) {
-                // Якщо типи збігаються (напр. OFF і OFF) — склеюємо
-                timerData = { endTime: nextMatch.end, type: cur.type };
-            } else {
-                // Якщо завтра о 00:00 інший тип або пустка — СТІНА
-                timerData = { endTime: 1440, type: cur.type };
+            const nextDayIdx = (tIdx + 1) % 7;
+            const nextPref = P_LIST[dayPrefixMap[nextDayIdx]];
+            const nextKeys = Object.keys(qData).filter(k => k.startsWith(nextPref + '_'));
+            const firstNext = nextKeys.map(k => {
+                const [s, e] = qData[k].split('-').map(t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; });
+                return { start: s, type: 'off' };
+            }).sort((a,b) => a.start - b.start)[0];
+            if (firstNext && firstNext.start === 0 && cur.type === 'off') {
+                const nextEnd = qData[nextKeys.sort()[0]].split('-')[1];
+                const [eh, em] = nextEnd.split(':').map(Number);
+                timerData = { endTime: 1440 + (eh * 60 + em), type: 'off' };
+                return;
             }
-        } else {
-            // Якщо подія не доходить до опівночі, або вже завтрашня
-            timerData = { endTime: cur.end, type: cur.type };
         }
-    }
+        timerData = { endTime: cur.end, type: cur.type };
+    } else { timerData = null; }
 }
 
+/**
+ * Updates the flip-style clock UI with current time or countdown.
+ */
 function updateFlipTimer() {
     const cont = document.getElementById('timer-container');
     if (!cont) return;
@@ -152,6 +150,7 @@ function updateFlipTimer() {
             label = timerData.type === 'off' ? "До ввімкнення:" : "До відключення:";
         } else { calculateTimerData(); return; }
     } else { h = now.getHours(); m = now.getMinutes(); s = now.getSeconds(); label = "Поточний час:"; }
+
     if (!cont.querySelector('.flip-clock')) {
         cont.innerHTML = `<div class="timer-wrapper"><div class="timer-label"></div><div class="flip-clock">
             <div class="flip-unit"><div class="flip-pair"><div class="roll-digit-container"><div id="h1" class="roll-digit-strip"></div></div><div class="roll-digit-container"><div id="h2" class="roll-digit-strip"></div></div></div><div class="unit-desc">год</div></div>
@@ -169,6 +168,9 @@ function updateFlipTimer() {
     updateGridMarker();
 }
 
+/**
+ * Highlights the current hour cell in the visual grid.
+ */
 function updateGridMarker() {
     if (dayIdx !== 0) {
         document.querySelectorAll('.hour-cell.current').forEach(el => { el.classList.remove('current'); el.querySelector('.current-dot')?.remove(); });
@@ -181,8 +183,14 @@ function updateGridMarker() {
     if (n) { n.classList.add('current'); if (!n.querySelector('.current-dot')) n.prepend(Object.assign(document.createElement('div'), { className: 'current-dot' })); }
 }
 
+/**
+ * Animates vertical scroll for the flip clock digits.
+ */
 function setDigit(id, v) { const s = document.getElementById(id); if (s) s.style.transform = `translateY(-${v * 52}px)`; }
 
+/**
+ * Main render function for schedule lists and visual grids.
+ */
 function render() {
     if (!db || !curQ) return;
     const qData = db[`${curQ}_cherg`], now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
@@ -217,6 +225,9 @@ function render() {
     renderVisual(slots, nowM);
 }
 
+/**
+ * Generates HTML for the list view of the schedule.
+ */
 function renderList(full, nowM, now) {
     const cont = document.getElementById('content-list'); if (!cont) return;
     cont.classList.toggle('hidden', viewMode !== 1);
@@ -244,6 +255,9 @@ function renderList(full, nowM, now) {
     }).join('') || `<div class="no-actual">На сьогодні все</div>`;
 }
 
+/**
+ * Generates HTML for the visual hourly grid view.
+ */
 function renderVisual(slots, nowM) {
     const cont = document.getElementById('content-visual'); if (!cont) return;
     cont.classList.toggle('hidden', viewMode !== 2);
@@ -263,8 +277,19 @@ function renderVisual(slots, nowM) {
     grid.innerHTML = html;
 }
 
+/**
+ * Utility: formats temperature value with a plus sign for positive numbers.
+ */
 function fmtTemp(t) { return t > 0 ? `+${t}°` : `${t}°`; }
+
+/**
+ * Utility: converts minutes from start of day to HH:MM format.
+ */
 function minToTime(m) { return `${Math.floor(m / 60 % 24).toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`; }
+
+/**
+ * Maps WMO weather codes to corresponding SVG icons.
+ */
 function getWeatherIcon(code) {
     if (code === 0) return weatherIcons.sun;
     if ([1, 2].includes(code)) return weatherIcons.cloudSun;
@@ -276,12 +301,18 @@ function getWeatherIcon(code) {
     return weatherIcons.cloud;
 }
 
+/**
+ * Renders the queue selection grid (e.g., 1.1, 1.2).
+ */
 function renderGrid() {
     const g = document.getElementById('grid');
     if (g) g.innerHTML = ["1.1", "1.2", "2.1", "2.2", "3.1", "3.2", "4.1", "4.2", "5.1", "5.2", "6.1", "6.2"]
         .map(q => `<button class="btn-q" onclick="selectQ('${q}')">${q}</button>`).join('');
 }
 
+/**
+ * Handles queue selection and UI state transitions.
+ */
 function selectQ(q) {
     curQ = q; localStorage.setItem('selectedQueue', q);
     document.getElementById('grid').classList.add('hidden');
@@ -290,10 +321,24 @@ function selectQ(q) {
     calculateTimerData(); render();
 }
 
+/**
+ * Resets the application to the queue selection view.
+ */
 function resetView() { localStorage.removeItem('selectedQueue'); location.reload(); }
+
+/**
+ * Toggles between Today (0) and Tomorrow (1) views.
+ */
 function setDay(i) { dayIdx = i; document.getElementById('tabL').classList.toggle('active', i === 0); document.getElementById('tabR').classList.toggle('active', i === 1); render(); }
+
+/**
+ * Toggles between List (1) and Visual (2) view modes.
+ */
 function setView(v) { viewMode = v; document.getElementById('view1').classList.toggle('active', v === 1); document.getElementById('view2').classList.toggle('active', v === 2); render(); }
 
+/**
+ * Fetches and processes weather forecast data.
+ */
 async function fetchWeather() {
     try {
         const r = await fetch(WEATHER_API);
@@ -321,17 +366,26 @@ async function fetchWeather() {
     } catch (e) { const c = localStorage.getItem('weatherCache'); if (c) { weatherData = JSON.parse(c); if (curQ) render(); } }
 }
 
+/**
+ * Cleans up expired calendar click tracking from local storage.
+ */
 function cleanOldClicks() {
     const now = Date.now();
     for (const k in clickedSlots) if (now - clickedSlots[k] > 172800000) delete clickedSlots[k];
     localStorage.setItem('clickedSlots', JSON.stringify(clickedSlots));
 }
 
+/**
+ * Handles clicks on the calendar icon, checking for duplicate entries.
+ */
 function handleCalendarClick(slot, isToday, type, slotId) {
     const act = () => { openGoogleCalendar(slot, isToday, type); clickedSlots[slotId] = Date.now(); localStorage.setItem('clickedSlots', JSON.stringify(clickedSlots)); render(); };
     clickedSlots[slotId] ? showCustomAlert(act) : act();
 }
 
+/**
+ * Displays a custom alert modal for duplicate calendar entries.
+ */
 function showCustomAlert(cb) {
     let ov = document.getElementById('modalOverlay');
     if (!ov) {
@@ -344,6 +398,9 @@ function showCustomAlert(cb) {
     document.getElementById('modalExit').onclick = () => ov.classList.remove('active');
 }
 
+/**
+ * Redirects the user to the Google Calendar event creation page.
+ */
 function openGoogleCalendar(slot, isToday, type) {
     const [sT, eT] = slot.split('-');
     const d = new Date(); if (!isToday) d.setDate(d.getDate() + 1);
@@ -352,6 +409,9 @@ function openGoogleCalendar(slot, isToday, type) {
     window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${iso(sT)}/${iso(eT)}&sf=true&output=xml`, '_blank');
 }
 
+/**
+ * Registers Service Worker for offline support and updates.
+ */
 function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.addEventListener('controllerchange', () => { window.location.reload(); });
@@ -363,6 +423,9 @@ function registerSW() {
     });
 }
 
+/**
+ * Displays UI notification bar when a new version is available.
+ */
 function showUpdateBar(w) {
     const bar = document.createElement('div'); bar.className = 'update-bar';
     bar.innerHTML = `<span>Доступна нова версія!</span><button id="update-button">Оновити</button>`;
@@ -373,6 +436,7 @@ function showUpdateBar(w) {
     };
 }
 
+// --- Execution ---
 cleanOldClicks();
 init();
 registerSW();
