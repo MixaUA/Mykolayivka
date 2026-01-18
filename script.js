@@ -80,67 +80,53 @@ function calculateTimerData() {
     const nowM = now.getHours() * 60 + now.getMinutes();
     const qData = db[`${curQ}_cherg`];
 
-    // Отримуємо індекси з нашого мапінгу
+    // Отримуємо індекси префіксів (0-6) для сьогодні і завтра
     const currMapIdx = dayPrefixMap[todayDow];
     const nextMapIdx = dayPrefixMap[(todayDow + 1) % 7];
 
-    // УМОВА: Чи йдуть індекси один за одним (наприклад, 5 -> 6, або 6 -> 0)
-    const isSequenceValid = nextMapIdx === (currMapIdx + 1) % 7;
+    // ЛОГІКА ВКАДОК: Перевіряємо, чи йдуть префікси суворо один за одним
+    // (напр. "one" -> "two" або "seven" -> "one")
+    const isNextInOrder = nextMapIdx === (currMapIdx + 1) % P_LIST.length;
 
-    function getEventsForDay(mapIdx, offsetMinutes) {
+    function getDaySlots(mapIdx, offset) {
         const pref = P_LIST[mapIdx];
-        const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
-        if (!dayKeys.length) return [];
-
-        const slots = dayKeys.map(k => {
+        const keys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
+        return keys.map(k => {
             const val = qData[k];
             if (!val || !/\d/.test(val)) return null;
             const [s, e] = val.split('-').map(t => { 
                 const [h, m] = t.split(':').map(Number); 
                 return h * 60 + m; 
             });
-            return { 
-                start: s + offsetMinutes, 
-                end: (e === 0 ? 1440 : e) + offsetMinutes, 
-                type: 'off' 
-            };
+            return { start: s + offset, end: (e === 0 ? 1440 : e) + offset, type: 'off' };
         }).filter(Boolean);
-
-        let dayEvents = [];
-        let last = offsetMinutes;
-        slots.sort((a, b) => a.start - b.start).forEach(s => {
-            if (s.start > last) dayEvents.push({ start: last, end: s.start, type: 'on' });
-            dayEvents.push(s); 
-            last = s.end;
-        });
-        if (last < offsetMinutes + 1440) {
-            dayEvents.push({ start: last, end: offsetMinutes + 1440, type: 'on' });
-        }
-        return dayEvents;
     }
 
-    // Формуємо події сьогоднішнього дня (завжди 0..1440)
-    let allEvents = getEventsForDay(currMapIdx, 0);
-
-    // Якщо індекси йдуть поруч ("one", "two"), додаємо блок завтрашнього дня (+1440)
-    if (isSequenceValid) {
-        const tomorrowEvents = getEventsForDay(nextMapIdx, 1440);
-        allEvents = allEvents.concat(tomorrowEvents);
+    // Збираємо слоти сьогодні
+    let combinedSlots = getDaySlots(currMapIdx, 0);
+    
+    // Якщо розриву немає — додаємо завтрашні
+    if (isNextInOrder) {
+        combinedSlots = [...combinedSlots, ...getDaySlots(nextMapIdx, 1440)];
     }
 
-    // Шукаємо, де ми зараз
+    // Створюємо повний графік з урахуванням світла (on)
+    let allEvents = [];
+    let last = 0;
+    const maxLimit = isNextInOrder ? 2880 : 1440; // Стіна на 24-й годині при розриві
+
+    combinedSlots.sort((a, b) => a.start - b.start).forEach(s => {
+        if (s.start > last) allEvents.push({ start: last, end: s.start, type: 'on' });
+        allEvents.push(s); 
+        last = s.end;
+    });
+    if (last < maxLimit) allEvents.push({ start: last, end: maxLimit, type: 'on' });
+
+    // Знаходимо, де ми зараз
     let cur = allEvents.find(ev => nowM >= ev.start && nowM < ev.end);
 
     if (cur) {
-        // СКЛЕЮВАННЯ: якщо подія закінчується рівно о 24:00 (1440) і є наступна того ж типу
-        if (cur.end === 1440 && isSequenceValid) {
-            const next = allEvents.find(ev => ev.start === 1440);
-            if (next && next.type === cur.type) {
-                cur = { ...cur, end: next.end };
-            }
-        }
-        
-        // ЗАХИСТ: Якщо індекси були НЕ поруч, cur.end ніколи не перевищить 1440
+        // Якщо це остання подія перед розривом, вона закінчиться рівно о 1440 (24:00)
         timerData = { endTime: cur.end, type: cur.type };
     } else {
         timerData = null;
