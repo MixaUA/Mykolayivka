@@ -80,17 +80,12 @@ function calculateTimerData() {
     const nowM = now.getHours() * 60 + now.getMinutes();
     const qData = db[`${curQ}_cherg`];
 
-    // Отримуємо індекси префіксів (0-6) для сьогодні і завтра
-    const currMapIdx = dayPrefixMap[todayDow];
-    const nextMapIdx = dayPrefixMap[(todayDow + 1) % 7];
-
-    // ЛОГІКА ВКАДОК: Перевіряємо, чи йдуть префікси суворо один за одним
-    // (напр. "one" -> "two" або "seven" -> "one")
-    const isNextInOrder = nextMapIdx === (currMapIdx + 1) % P_LIST.length;
-
-    function getDaySlots(mapIdx, offset) {
-        const pref = P_LIST[mapIdx];
+    // Функція збору слотів, як у вкладок
+    function getSlotsForDay(dIdx, offset) {
+        const tIdx = ((now.getDay() + 6) % 7 + dIdx) % 7;
+        const pref = P_LIST[dayPrefixMap[tIdx]];
         const keys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
+        
         return keys.map(k => {
             const val = qData[k];
             if (!val || !/\d/.test(val)) return null;
@@ -102,34 +97,45 @@ function calculateTimerData() {
         }).filter(Boolean);
     }
 
-    // Збираємо слоти сьогодні
-    let combinedSlots = getDaySlots(currMapIdx, 0);
-    
-    // Якщо розриву немає — додаємо завтрашні
-    if (isNextInOrder) {
-        combinedSlots = [...combinedSlots, ...getDaySlots(nextMapIdx, 1440)];
-    }
+    // 1. Беремо "Сьогодні" (як вкладка 1)
+    let todaySlots = getSlotsForDay(0, 0);
+    // 2. Беремо "Завтра" (як вкладка 2)
+    let tomorrowSlots = getSlotsForDay(1, 1440);
 
-    // Створюємо повний графік з урахуванням світла (on)
+    // Склеюємо їх в один потік
+    let allSlots = [...todaySlots, ...tomorrowSlots];
+    
+    // Додаємо "світло"
     let allEvents = [];
     let last = 0;
-    const maxLimit = isNextInOrder ? 2880 : 1440; // Стіна на 24-й годині при розриві
-
-    combinedSlots.sort((a, b) => a.start - b.start).forEach(s => {
+    allSlots.sort((a, b) => a.start - b.start).forEach(s => {
         if (s.start > last) allEvents.push({ start: last, end: s.start, type: 'on' });
         allEvents.push(s); 
         last = s.end;
     });
-    if (last < maxLimit) allEvents.push({ start: last, end: maxLimit, type: 'on' });
+    if (last < 2880) allEvents.push({ start: last, end: 2880, type: 'on' });
 
-    // Знаходимо, де ми зараз
+    // ШУКАЄМО ПОТОЧНУ ПОДІЮ
     let cur = allEvents.find(ev => nowM >= ev.start && nowM < ev.end);
 
     if (cur) {
-        // Якщо це остання подія перед розривом, вона закінчиться рівно о 1440 (24:00)
-        timerData = { endTime: cur.end, type: cur.type };
-    } else {
-        timerData = null;
+        // ПЕРЕВІРКА НА РОЗРИВ:
+        // Якщо подія закінчуется о 24:00 (1440)
+        if (cur.end === 1440) {
+            // Дивимось, чи завтра о 00:00 (теж 1440) починається така сама подія
+            const nextMatch = allEvents.find(ev => ev.start === 1440 && ev.type === cur.type);
+            
+            if (nextMatch) {
+                // Якщо типи збігаються (напр. OFF і OFF) — склеюємо
+                timerData = { endTime: nextMatch.end, type: cur.type };
+            } else {
+                // Якщо завтра о 00:00 інший тип або пустка — СТІНА
+                timerData = { endTime: 1440, type: cur.type };
+            }
+        } else {
+            // Якщо подія не доходить до опівночі, або вже завтрашня
+            timerData = { endTime: cur.end, type: cur.type };
+        }
     }
 }
 
