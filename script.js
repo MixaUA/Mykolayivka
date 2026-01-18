@@ -1,8 +1,8 @@
 const API_URL = "https://raw.githubusercontent.com/MixaUA/Mykolayivka/main/database_new.json";
-const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=50.2699&longitude=34.3961&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Europe/Kiev&forecast_days=2";
+const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=50.2699&longitude=34.3961&daily=temperature_2m_max,temperature_2m_min,weathercode&hourly=weathercode&timezone=Europe/Kiev&forecast_days=2";
 const P_LIST = ["one", "two", "three", "four", "five", "six", "seven"];
+const DAYS_UA = ["понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота", "неділя"];
 
-// --- SVGs ---
 const calendarSVG = `<svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>`;
 const clockSVG = `<svg class="loader-clock" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3s" repeatCount="indefinite"/></path></svg>`;
 const powerOffSVG = `<svg class="icon-pwr" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2.5"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/></svg>`;
@@ -17,108 +17,76 @@ const weatherIcons = {
     fog: `<svg viewBox="0 0 64 64"><path d="M47.7,35.4c0-4.6-3.7-8.2-8.2-8.2c-1,0-1.9,0.2-2.8,0.5c-0.3-3.4-3.1-6.2-6.6-6.2c-3.7,0-6.7,3-6.7,6.7c0,0.8,0.2,1.6,0.4,2.3    c-0.3-0.1-0.7-0.1-1-0.1c-3.7,0-6.7,3-6.7,6.7c0,3.6,2.9,6.6,6.5,6.7l17.2,0C44.2,43.3,47.7,39.8,47.7,35.4z" fill="white" stroke="black" stroke-linejoin="round" stroke-width="1.2" transform="translate(-2,-11)"/><g transform="translate(12, 45)"><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" x1="0" y1="0" x2="40" y2="0" stroke-dasharray="4,4"><animateTransform attributeName="transform" type="translate" values="0 0; 2 0; -2 0; 0 0" dur="3.5s" repeatCount="indefinite" additive="sum"/></line><line fill="none" stroke="black" stroke-linecap="round" stroke-width="1.5" x1="0" y1="8" x2="35" y2="8" stroke-dasharray="4,4"><animateTransform attributeName="transform" type="translate" values="0 0; -2 0; 2 0; 0 0" dur="4s" repeatCount="indefinite" additive="sum" begin="0.3s"/></line></g></svg>`
 };
 
-// --- State ---
-let dayPrefixMap = [0, 1, 2, 3, 4, 5, 6]; // Default map, will be updated from mapping.json
-let lastCalibrationDate = null; // Stores the lastCalibration date from mapping.json
+let dayPrefixMap = [0, 1, 2, 3, 4, 5, 6]; 
+let lastCalibrationDate = null;
 let db = null, curQ = localStorage.getItem('selectedQueue');
 let dayIdx = 0, viewMode = 1;
 let weatherData = null, timerData = null;
 let clickedSlots = JSON.parse(localStorage.getItem('clickedSlots')) || {};
 
-// --- Initialization ---
 async function loadConfig() {
     try {
-        const response = await fetch('mapping.json?t=' + Date.now()); // ?t=... to prevent caching
+        const response = await fetch('mapping.json?t=' + Date.now());
         const config = await response.json();
-        
         const mapChanged = JSON.stringify(config.calibratedMap) !== JSON.stringify(dayPrefixMap);
-
         if (config.calibratedMap) {
             dayPrefixMap = config.calibratedMap;
-            if (config.lastCalibration) {
-                lastCalibrationDate = config.lastCalibration;
-            }
-            console.log("Map updated from server:", dayPrefixMap);
-
-            // If the map has changed and we already have data, re-render the UI instantly.
-            if (mapChanged && db && curQ) {
-                console.log("Map has changed, re-rendering UI instantly.");
-                calculateTimerData();
-                render();
-            }
+            lastCalibrationDate = config.lastCalibration;
+            if (mapChanged && db && curQ) { calculateTimerData(); render(); }
         }
-    } catch (e) {
-        console.error("Error loading config, using default map.");
-    }
+    } catch (e) { console.error("Config load error"); }
 }
 
 async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
     updateFlipTimer();
-
-    await loadConfig(); // Load mapping on initial page load
+    await loadConfig();
     await fetchData(); 
     renderGrid();
-    if (curQ) selectQ(curQ); // Render only after getting data
-
+    if (curQ) selectQ(curQ);
     await fetchWeather();
-
     setInterval(updateFlipTimer, 1000);
-    setInterval(() => { if (curQ && db) { calculateTimerData(); render(); } }, 60000); // UI update every minute
-    setInterval(async () => { if (curQ) await fetchData(); }, 1200000); // Data update every 20 mins
-    setInterval(() => { fetchWeather(); }, 3600000); // Weather every hour
+    setInterval(() => { if (curQ && db) { calculateTimerData(); render(); } }, 60000);
+    setInterval(async () => { if (curQ) await fetchData(); }, 1200000); 
+    setInterval(() => { fetchWeather(); }, 3600000);
 }
 
 async function fetchData() {
-    // Check if a new day has started since the last mapping was loaded
     if (lastCalibrationDate) {
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0]; // "YYYY-MM-DD"
-        if (todayStr > lastCalibrationDate) {
-            console.log("New day detected, reloading mapping.json...");
-            await loadConfig(); // This will also re-render if the map changes
-        }
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (todayStr > lastCalibrationDate) await loadConfig();
     }
-    
     const now = Date.now();
     try {
         const r = await fetch(`${API_URL}?t=${now}`);
-        if (!r.ok) throw new Error("Network error");
+        if (!r.ok) throw new Error();
         db = await r.json();
-
         localStorage.setItem('db_cache', JSON.stringify(db));
         localStorage.setItem('db_cache_time', now.toString());
         document.getElementById('status').innerText = `Оновлено: ${db.update_time}`;
-
         if (curQ) { calculateTimerData(); render(); }
     } catch (e) {
         const cached = localStorage.getItem('db_cache');
-        if (cached) {
-            db = JSON.parse(cached);
-            if (curQ) { calculateTimerData(); render(); }
-        }
+        if (cached) { db = JSON.parse(cached); if (curQ) { calculateTimerData(); render(); } }
         document.getElementById('status').innerText = "Офлайн / Кеш";
     }
 }
 
-// --- Logic ---
 function calculateTimerData() {
     if (!db || !curQ) return;
     const now = new Date(), todayIdx = (now.getDay() + 6) % 7, allEvents = [];
-
     for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
         const targetIdx = (todayIdx + dayOffset) % 7;
         const qData = db[`${curQ}_cherg`];
-        const dayKeys = Object.keys(qData).filter(k => k.startsWith(P_LIST[dayPrefixMap[targetIdx]] + '_'));
+        const pref = P_LIST[dayPrefixMap[targetIdx]];
+        const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
         if (!dayKeys.length) continue;
-
         const slots = dayKeys.map(k => {
             const val = qData[k];
             if (!/\d/.test(val)) return null;
             const [s, e] = val.split('-').map(t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; });
             return { start: s + dayOffset * 1440, end: (e === 0 ? 1440 : e) + dayOffset * 1440, type: 'off' };
         }).filter(Boolean);
-
         let last = dayOffset * 1440;
         slots.sort((a, b) => a.start - b.start).forEach(s => {
             if (s.start > last) allEvents.push({ start: last, end: s.start, type: 'on' });
@@ -127,27 +95,27 @@ function calculateTimerData() {
         if (last < (dayOffset + 1) * 1440) allEvents.push({ start: last, end: (dayOffset + 1) * 1440, type: 'on' });
     }
     const nowM = now.getHours() * 60 + now.getMinutes();
-    const cur = allEvents.find(ev => nowM >= ev.start && nowM < ev.end);
-    timerData = cur ? { endTime: cur.end * 60, type: cur.type } : null;
+    let cur = allEvents.find(ev => nowM >= ev.start && nowM < ev.end);
+    if (cur && cur.end === 1440) {
+        const next = allEvents.find(ev => ev.start === 1440);
+        if (next && next.type === cur.type) cur = { ...cur, end: next.end };
+    }
+    timerData = cur ? { endTime: cur.end, type: cur.type } : null;
 }
 
-// --- Timers & UI ---
 function updateFlipTimer() {
     const cont = document.getElementById('timer-container');
     if (!cont) return;
     const now = new Date();
     let h, m, s, label;
-
     if (curQ && timerData) {
-        let diff = timerData.endTime - (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds());
+        const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+        let diff = (timerData.endTime * 60) - nowSec;
         if (diff >= 0) {
             h = Math.floor(diff / 3600); m = Math.floor((diff % 3600) / 60); s = diff % 60;
             label = timerData.type === 'off' ? "До ввімкнення:" : "До відключення:";
         } else { calculateTimerData(); return; }
-    } else {
-        h = now.getHours(); m = now.getMinutes(); s = now.getSeconds(); label = "Поточний час:";
-    }
-
+    } else { h = now.getHours(); m = now.getMinutes(); s = now.getSeconds(); label = "Поточний час:"; }
     if (!cont.querySelector('.flip-clock')) {
         cont.innerHTML = `<div class="timer-wrapper"><div class="timer-label"></div><div class="flip-clock">
             <div class="flip-unit"><div class="flip-pair"><div class="roll-digit-container"><div id="h1" class="roll-digit-strip"></div></div><div class="roll-digit-container"><div id="h2" class="roll-digit-strip"></div></div></div><div class="unit-desc">год</div></div>
@@ -158,32 +126,23 @@ function updateFlipTimer() {
             document.getElementById(id).innerHTML = Array.from({ length: 10 }, (_, i) => `<div class="roll-num">${i}</div>`).join('');
         });
     }
-
     setDigit('h1', Math.floor(h / 10)); setDigit('h2', h % 10);
     setDigit('m1', Math.floor(m / 10)); setDigit('m2', m % 10);
     setDigit('s1', Math.floor(s / 10)); setDigit('s2', s % 10);
     const tL = cont.querySelector('.timer-label'); if (tL) tL.textContent = label;
-
     updateGridMarker();
 }
 
 function updateGridMarker() {
-    if (dayIdx !== 0) { // Cleanup if not today
+    if (dayIdx !== 0) {
         document.querySelectorAll('.hour-cell.current').forEach(el => { el.classList.remove('current'); el.querySelector('.current-dot')?.remove(); });
         return;
     }
-    const h = new Date().getHours(), currentId = `hcell-${h}`;
-    const active = document.querySelector('.hour-cell.current');
-
-    if (active && active.id === currentId) return; // Same hour, nothing to do
-
-    if (active) { active.classList.remove('current'); active.querySelector('.current-dot')?.remove(); }
-
-    const newActive = document.getElementById(currentId);
-    if (newActive) {
-        newActive.classList.add('current');
-        if (!newActive.querySelector('.current-dot')) newActive.prepend(Object.assign(document.createElement('div'), { className: 'current-dot' }));
-    }
+    const h = new Date().getHours(), id = `hcell-${h}`, act = document.querySelector('.hour-cell.current');
+    if (act && act.id === id) return;
+    if (act) { act.classList.remove('current'); act.querySelector('.current-dot')?.remove(); }
+    const n = document.getElementById(id);
+    if (n) { n.classList.add('current'); if (!n.querySelector('.current-dot')) n.prepend(Object.assign(document.createElement('div'), { className: 'current-dot' })); }
 }
 
 function setDigit(id, v) { const s = document.getElementById(id); if (s) s.style.transform = `translateY(-${v * 52}px)`; }
@@ -191,41 +150,33 @@ function setDigit(id, v) { const s = document.getElementById(id); if (s) s.style
 function render() {
     if (!db || !curQ) return;
     const qData = db[`${curQ}_cherg`], now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
-
-    // Weather
     const elT = document.getElementById('weatherToday'), elTom = document.getElementById('weatherTomorrow');
     if (weatherData && elT && elTom) {
         elT.innerHTML = `${getWeatherIcon(weatherData.today.code)} <span class="temp-range">${fmtTemp(weatherData.today.max)} / ${fmtTemp(weatherData.today.min)}</span>`;
         elTom.innerHTML = `${getWeatherIcon(weatherData.tomorrow.code)} <span class="temp-range">${fmtTemp(weatherData.tomorrow.max)} / ${fmtTemp(weatherData.tomorrow.min)}</span>`;
     }
-
-    const tDayIdx = ((now.getDay() + 6) % 7 + dayIdx) % 7;
-    const pref = P_LIST[dayPrefixMap[tDayIdx]];
+    const tIdx = ((now.getDay() + 6) % 7 + dayIdx) % 7;
+    const pref = P_LIST[dayPrefixMap[tIdx]];
     const dayKeys = Object.keys(qData).filter(k => k.startsWith(pref + '_'));
-
     let msg = null;
     if (!dayKeys.length) msg = `<div class="no-actual">Графік на ${dayIdx === 0 ? 'сьогодні' : 'завтра'} очікується</div>`;
     else if (!/\d/.test(qData[dayKeys[0]])) msg = `<div class="no-actual">${qData[dayKeys[0]]}</div>`;
-
     if (msg) {
         const cl = document.getElementById('content-list'), cv = document.getElementById('content-visual');
         if (cl) { cl.innerHTML = msg; cl.classList.toggle('hidden', viewMode !== 1); }
         if (cv) { document.getElementById('hours-grid').innerHTML = msg; cv.classList.toggle('hidden', viewMode !== 2); }
         return;
     }
-
     const slots = dayKeys.map(k => {
         const [s, e] = qData[k].split('-').map(t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; });
         return { start: s, end: (e === 0 ? 1440 : e), type: 'off', raw: qData[k] };
     }).sort((a, b) => a.start - b.start);
-
     let full = [], last = 0;
     slots.forEach(s => {
         if (s.start > last) full.push({ start: last, end: s.start, type: 'on', raw: `${minToTime(last)}-${minToTime(s.start)}` });
         full.push(s); last = s.end;
     });
     if (last < 1440) full.push({ start: last, end: 1440, type: 'on', raw: `${minToTime(last)}-${minToTime(1440)}` });
-
     renderList(full, nowM, now);
     renderVisual(slots, nowM);
 }
@@ -233,18 +184,15 @@ function render() {
 function renderList(full, nowM, now) {
     const cont = document.getElementById('content-list'); if (!cont) return;
     cont.classList.toggle('hidden', viewMode !== 1);
-
     const display = full.filter(ev => dayIdx === 0 ? ev.end > nowM : true);
     const d = new Date(); if (dayIdx === 1) d.setDate(d.getDate() + 1);
     const dateStr = d.toISOString().split('T')[0];
-
     cont.innerHTML = display.map(ev => {
         const s = minToTime(ev.start), e = minToTime(ev.end), dur = (ev.end - ev.start) / 60;
         const isCur = dayIdx === 0 && nowM >= ev.start && nowM < ev.end;
         const isLocked = dayIdx === 0 && (ev.start - nowM <= 60);
         const slotId = btoa(unescape(encodeURIComponent(`${dateStr}-${curQ}-${ev.raw || (s + e)}`))).replace(/=/g, '');
         const hasClicked = clickedSlots.hasOwnProperty(slotId);
-
         return `<div class="slot ${ev.type} ${isCur ? 'current' : ''}">
             <div class="time-box"><span class="time">${s}-${e}</span></div>
             <div class="slot-right">
@@ -264,7 +212,6 @@ function renderVisual(slots, nowM) {
     const cont = document.getElementById('content-visual'); if (!cont) return;
     cont.classList.toggle('hidden', viewMode !== 2);
     const grid = document.getElementById('hours-grid');
-
     let html = '';
     for (let h = 0; h < 24; h++) {
         const hS = h * 60, hE = (h + 1) * 60;
@@ -280,7 +227,6 @@ function renderVisual(slots, nowM) {
     grid.innerHTML = html;
 }
 
-// --- Helpers & Others ---
 function fmtTemp(t) { return t > 0 ? `+${t}°` : `${t}°`; }
 function minToTime(m) { return `${Math.floor(m / 60 % 24).toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`; }
 function getWeatherIcon(code) {
@@ -317,21 +263,28 @@ async function fetchWeather() {
         const r = await fetch(WEATHER_API);
         if (!r.ok) throw new Error();
         const data = await r.json();
-        if (!data.daily?.weathercode) return;
+        function getDominantCode(dayIdx) {
+            if (!data.hourly?.weathercode) return data.daily.weathercode[dayIdx];
+            const start = 10, end = 16, off = dayIdx * 24;
+            const codes = data.hourly.weathercode.slice(off + start, off + end + 1);
+            const counts = {};
+            for (const c of codes) counts[c] = (counts[c] || 0) + 1;
+            if ((counts[0] || 0) >= 2) return 0;
+            if ((counts[1] || 0) + (counts[2] || 0) >= 2) return 2;
+            let max = 0, dom = codes[0];
+            for (const c in counts) if (counts[c] > max) { max = counts[c]; dom = parseInt(c); }
+            return dom;
+        }
         weatherData = {
             timestamp: Date.now(),
-            today: { max: Math.round(data.daily.temperature_2m_max[0]), min: Math.round(data.daily.temperature_2m_min[0]), code: data.daily.weathercode[0] },
-            tomorrow: { max: Math.round(data.daily.temperature_2m_max[1]), min: Math.round(data.daily.temperature_2m_min[1]), code: data.daily.weathercode[1] }
+            today: { max: Math.round(data.daily.temperature_2m_max[0]), min: Math.round(data.daily.temperature_2m_min[0]), code: getDominantCode(0) },
+            tomorrow: { max: Math.round(data.daily.temperature_2m_max[1]), min: Math.round(data.daily.temperature_2m_min[1]), code: getDominantCode(1) }
         };
         localStorage.setItem('weatherCache', JSON.stringify(weatherData));
         if (curQ) render();
-    } catch (e) {
-        const c = localStorage.getItem('weatherCache');
-        if (c) { weatherData = JSON.parse(c); if (curQ) render(); }
-    }
+    } catch (e) { const c = localStorage.getItem('weatherCache'); if (c) { weatherData = JSON.parse(c); if (curQ) render(); } }
 }
 
-// Calendar & SW
 function cleanOldClicks() {
     const now = Date.now();
     for (const k in clickedSlots) if (now - clickedSlots[k] > 172800000) delete clickedSlots[k];
@@ -365,6 +318,7 @@ function openGoogleCalendar(slot, isToday, type) {
 
 function registerSW() {
     if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { window.location.reload(); });
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
         reg.addEventListener('updatefound', () => {
             const w = reg.installing;
