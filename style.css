@@ -697,3 +697,46 @@ h1 {
 
 /* Calendar button state */
 .no-anim { animation: none !important; opacity: 0.7; }
+
+/* Стиль посилання на Telegram */
+.wiki-link-tg {
+    color: #0088cc;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.wiki-link-tg:hover {
+    text-decoration: underline;
+}
+
+/* Стиль для попередження про динамічні зміни */
+.wiki-warning {
+    font-size: 0.9em;
+    color: #666;
+    font-style: italic;
+    border-left: 3px solid #ffd700; /* Золотиста лінія збоку для акценту */
+    padding-left: 10px;
+    margin-top: 10px;
+}
+
+/* Невеличкий розділювач всередині довідки */
+.separator-mini {
+    height: 1px;
+    background: #eee;
+    margin: 15px 0;
+}
+
+
+/* --- Status Dot Indicator --- */
+#status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 8px;
+    animation: pulse-dot 2s infinite;
+}
+.online-dot { background-color: #4CAF50; }
+.offline-dot { background-color: #ff6b6b; }
+#status { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; }
+
