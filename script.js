@@ -41,7 +41,7 @@ async function init() {
     document.getElementById('year').innerText = new Date().getFullYear();
     updateFlipTimer();
 
-    // Cache-first logic
+    // 1. Завантажуємо кеш
     const cachedDb = localStorage.getItem('db_cache');
     if (cachedDb) {
         db = JSON.parse(cachedDb);
@@ -49,23 +49,29 @@ async function init() {
         if (updateTimeEl && db.update_time) updateTimeEl.innerText = `Оновлено: ${db.update_time}`;
     }
 
-    renderGrid();
-    updateStatusDot();
-
-    // Conditional initial fetch
-    const cacheTime = parseInt(localStorage.getItem('db_cache_time')) || 0;
-    // Перевіряємо не тільки наявність кешу, а й наявність даних черг
-    const needsFetch = !db || !db.queues || (Date.now() - cacheTime > 20 * 60 * 1000);
-
-    if (needsFetch) {
-        await fetchData(); // Чекаємо завершення якщо кешу немає, він битий, або застарілий
+    // 2. Логіка відображення (тепер працює в парі з твоїм новим HTML)
+    if (curQ) {
+        // Якщо черга обрана, просто ставимо заголовок
+        document.getElementById('title').innerText = `Черга ${curQ}`;
+    } else {
+        // Якщо черги немає — показуємо сітку вибору
+        document.getElementById('grid').classList.remove('hidden');
+        document.getElementById('box').classList.add('hidden');
+        renderGrid();
     }
 
-    // Тепер db точно є, можна рендерити
-    if (curQ) selectQ(curQ);
+    updateStatusDot();
+
+    // 3. Перевірка оновлень на GitHub (HEAD-запит)
+    await fetchData();
+
+    if (curQ) {
+        selectQ(curQ); 
+    }
 
     await fetchWeather();
 
+    // Інтервали
     setInterval(updateFlipTimer, 1000);
     setInterval(() => {
         if (curQ && db) {
@@ -74,13 +80,28 @@ async function init() {
             updateStatusDot();
         }
     }, 60000);
-    setInterval(async () => { if (curQ) await fetchData(); }, 1200000);
+    
+    setInterval(async () => { if (curQ) await fetchData(); }, 300000);
     setInterval(() => { fetchWeather(); }, 3600000);
 }
 
 async function fetchData() {
     const now = Date.now();
     try {
+        // 1. "Легкий" запит заголовків для перевірки дати зміни файлу на GitHub
+        const headResponse = await fetch(API_URL, { method: 'HEAD', cache: 'no-cache' });
+        const lastModifiedServer = headResponse.headers.get('Last-Modified');
+        const lastModifiedLocal = localStorage.getItem('db_last_modified');
+
+        // 2. Якщо дата на сервері збігається з локальною — не качаємо JSON
+        if (lastModifiedServer && lastModifiedServer === lastModifiedLocal && db) {
+            console.log('Дані актуальні (Last-Modified збігається). Скіпаємо завантаження.');
+            localStorage.setItem('db_cache_time', now.toString());
+            updateStatusDot();
+            return;
+        }
+
+        // 3. Якщо файл оновився або кешу немає — тягнемо повний JSON
         const r = await fetch(`${API_URL}?t=${now}`);
         if (!r.ok) throw new Error('Network response was not ok');
         const freshDb = await r.json();
@@ -88,6 +109,11 @@ async function fetchData() {
         db = freshDb;
         localStorage.setItem('db_cache', JSON.stringify(db));
         localStorage.setItem('db_cache_time', now.toString());
+        
+        // Зберігаємо нову мітку часу від сервера
+        if (lastModifiedServer) {
+            localStorage.setItem('db_last_modified', lastModifiedServer);
+        }
 
         const updateTimeEl = document.getElementById('update-time');
         if (updateTimeEl) updateTimeEl.innerText = `Оновлено: ${db.update_time}`;
@@ -100,12 +126,10 @@ async function fetchData() {
     } catch (e) {
         console.log('Fetch failed, continuing with cached data.', e);
 
-        // Якщо кеш порожній і fetch падає - показуємо помилку
         if (!db) {
             const statusEl = document.getElementById('update-time');
             if (statusEl) statusEl.innerText = 'Помилка завантаження даних';
 
-            // Показуємо повідомлення в content-list якщо черга вибрана
             if (curQ) {
                 const cl = document.getElementById('content-list');
                 if (cl) {
@@ -114,7 +138,6 @@ async function fetchData() {
                 }
             }
         }
-
         updateStatusDot();
     }
 }
