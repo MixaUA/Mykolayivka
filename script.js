@@ -1,4 +1,4 @@
-const API_URL = "database.json";
+const API_URL = "https://raw.githubusercontent.com/MixaUA/Grafik/main/database.json";
 const WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=50.2699&longitude=34.3961&daily=temperature_2m_max,temperature_2m_min,weathercode&hourly=weathercode&timezone=Europe/Kiev&forecast_days=2";
 const DAYS_UA = ["понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота", "неділя"];
 
